@@ -1,9 +1,5 @@
-import React from 'react'
+import ChatWindow from "@/components/chats/ChatWindow";
 
-const page = () => {
-  return (
-    <div>Chats</div>
-  )
+export default function ChatsPage() {
+  return <ChatWindow />;
 }
-
-export default page
