@@ -1,18 +1,18 @@
 "use client"
 
 import React from "react"
+import Link from "next/link"
 import { Avatar, AvatarFallback, AvatarBadge } from "@/components/ui/avatar"
-import { Button } from "@/components/ui/button"
+import { buttonVariants } from "@/components/ui/button"
 import { MessageSquare } from "lucide-react"
 import type { Conversation } from "@/types"
 import { cn } from "@/lib/utils"
 
 type FriendItemProps = {
   friend: Conversation
-  onMessage?: (id: string) => void
 }
 
-const FriendItem = ({ friend, onMessage }: FriendItemProps) => {
+const FriendItem = ({ friend }: FriendItemProps) => {
   const { id, name, initials, isOnline, timestamp } = friend
 
   const fallbackInitials =
@@ -54,15 +54,16 @@ const FriendItem = ({ friend, onMessage }: FriendItemProps) => {
         </div>
       </div>
 
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={() => onMessage?.(id)}
-        className="gap-2 rounded-md border-(--color-border-tertiary) bg-(--color-background-primary) text-(--color-text-primary) hover:bg-(--color-background-secondary)"
+      <Link
+        href={`/chats/${id}`}
+        className={cn(
+          buttonVariants({ variant: "outline", size: "sm" }),
+          "gap-2 rounded-md border-(--color-border-tertiary) bg-(--color-background-primary) text-(--color-text-primary) hover:bg-(--color-background-secondary)"
+        )}
       >
         <MessageSquare className="size-4" />
         Message
-      </Button>
+      </Link>
     </div>
   )
 }
