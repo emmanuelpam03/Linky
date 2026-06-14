@@ -1,9 +1,8 @@
-import React from 'react'
+import React from "react"
+import RequestList from "@/components/requests/RequestList"
 
-const page = () => {
-  return (
-    <div>Requests</div>
-  )
+const Page = () => {
+  return <RequestList />
 }
 
-export default page
+export default Page
