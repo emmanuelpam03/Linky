@@ -1,9 +1,8 @@
-import React from 'react'
+import React from "react"
+import FriendList from "@/components/friends/FriendList"
 
-const page = () => {
-  return (
-    <div>Friends</div>
-  )
+const Page = () => {
+  return <FriendList />
 }
 
-export default page
+export default Page
