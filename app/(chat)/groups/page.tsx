@@ -1,9 +1,5 @@
-import React from 'react'
+import GroupWindow from "@/components/groups/GroupWindow";
 
-const page = () => {
-  return (
-    <div>Groups</div>
-  )
+export default function GroupsPage() {
+  return <GroupWindow />;
 }
-
-export default page

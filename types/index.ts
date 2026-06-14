@@ -9,3 +9,13 @@ export type Conversation = {
   unreadCount?: number;
   isGroup?: boolean;
 };
+
+export type GroupIcon = "code" | "music" | "home";
+
+export type Group = {
+  id: string;
+  name: string;
+  lastMessage: string;
+  timestamp: string;
+  icon: GroupIcon;
+};
