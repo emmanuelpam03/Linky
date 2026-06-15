@@ -52,7 +52,7 @@ export default function LoginForm() {
           Remember me
         </label>
 
-        <Link href="#" className="text-sm font-medium text-(--color-brand-400) hover:text-(--color-brand-600)">
+        <Link href="/verify" className="text-sm font-medium text-(--color-brand-400) hover:text-(--color-brand-600)">
           Forgot password?
         </Link>
       </div>
