@@ -8,23 +8,40 @@ import { Input } from "@/components/ui/input"
 type OtpInputProps = {
   length?: number
   className?: string
+  value?: string
+  onChange?: (value: string) => void
 }
 
-export function OtpInput({ length = 6, className }: OtpInputProps) {
+export function OtpInput({
+  length = 6,
+  className,
+  value = "",
+  onChange,
+}: OtpInputProps) {
   const inputsRef = React.useRef<Array<HTMLInputElement | null>>([])
+  const digits = Array.from({ length }, (_, index) => value[index] ?? "")
 
-  const handleChange = (index: number, value: string) => {
-    if (!/^\d?$/.test(value)) return
+  const updateDigit = (index: number, digit: string) => {
+    const nextDigits = Array.from({ length }, (_, i) =>
+      i === index ? digit : (value[i] ?? "")
+    )
+    onChange?.(nextDigits.join("").slice(0, length))
+  }
 
-    const input = inputsRef.current[index]
-    if (input) input.value = value
+  const handleChange = (index: number, inputValue: string) => {
+    if (!/^\d?$/.test(inputValue)) return
 
-    if (value && index < length - 1) {
+    updateDigit(index, inputValue)
+
+    if (inputValue && index < length - 1) {
       inputsRef.current[index + 1]?.focus()
     }
   }
 
-  const handleKeyDown = (index: number, event: React.KeyboardEvent<HTMLInputElement>) => {
+  const handleKeyDown = (
+    index: number,
+    event: React.KeyboardEvent<HTMLInputElement>
+  ) => {
     if (event.key === "Backspace" && !event.currentTarget.value && index > 0) {
       inputsRef.current[index - 1]?.focus()
     }
@@ -40,6 +57,7 @@ export function OtpInput({ length = 6, className }: OtpInputProps) {
           }}
           inputMode="numeric"
           maxLength={1}
+          value={digits[index]}
           onChange={(event) => handleChange(index, event.target.value)}
           onKeyDown={(event) => handleKeyDown(index, event)}
           className="h-10 w-10 rounded-lg p-0 text-center text-lg font-semibold sm:h-11 sm:w-11"

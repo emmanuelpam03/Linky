@@ -1,5 +1,6 @@
 "use client"
 
+import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { FormField } from "@/components/ui/form-field"
 import { Input } from "@/components/ui/input"
@@ -7,10 +8,35 @@ import { Input } from "@/components/ui/input"
 type CreateGroupModalProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
+  onCreateGroup?: (data: { name: string; description: string }) => void
 }
 
-export default function CreateGroupModal({ open, onOpenChange }: CreateGroupModalProps) {
+export default function CreateGroupModal({
+  open,
+  onOpenChange,
+  onCreateGroup,
+}: CreateGroupModalProps) {
+  const [groupName, setGroupName] = useState("")
+  const [description, setDescription] = useState("")
+
+  useEffect(() => {
+    if (!open) {
+      setGroupName("")
+      setDescription("")
+    }
+  }, [open])
+
   if (!open) return null
+
+  const resetForm = () => {
+    setGroupName("")
+    setDescription("")
+  }
+
+  const handleClose = () => {
+    onOpenChange(false)
+    resetForm()
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 backdrop-blur-sm">
@@ -26,15 +52,28 @@ export default function CreateGroupModal({ open, onOpenChange }: CreateGroupModa
           className="mt-6 grid gap-4"
           onSubmit={(event) => {
             event.preventDefault()
-            onOpenChange(false)
+            const name = groupName.trim()
+            if (!name) return
+
+            onCreateGroup?.({ name, description: description.trim() })
+            handleClose()
           }}
         >
           <FormField label="Group name">
-            <Input placeholder="Weekend plans" />
+            <Input
+              placeholder="Weekend plans"
+              value={groupName}
+              onChange={(event) => setGroupName(event.target.value)}
+              required
+            />
           </FormField>
 
           <FormField label="Description">
-            <Input placeholder="Optional group description" />
+            <Input
+              placeholder="Optional group description"
+              value={description}
+              onChange={(event) => setDescription(event.target.value)}
+            />
           </FormField>
 
           <div className="flex justify-end gap-2 pt-2">
@@ -43,7 +82,7 @@ export default function CreateGroupModal({ open, onOpenChange }: CreateGroupModa
               variant="outline"
               size="sm"
               className="rounded-lg border-(--color-border-tertiary)"
-              onClick={() => onOpenChange(false)}
+              onClick={handleClose}
             >
               Cancel
             </Button>

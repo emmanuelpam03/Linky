@@ -3,11 +3,38 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { mockGroups } from "@/lib/mock-groups";
+import type { Group } from "@/types";
 import CreateGroupModal from "./CreateGroupModal";
 import GroupItem from "./GroupItem";
 
 export default function GroupList() {
   const [createOpen, setCreateOpen] = useState(false);
+  const [groups, setGroups] = useState<Group[]>(mockGroups);
+
+  const handleCreateGroup = ({
+    name,
+    description,
+  }: {
+    name: string;
+    description: string;
+  }) => {
+    const id =
+      name
+        .toLowerCase()
+        .replace(/\s+/g, "-")
+        .replace(/[^a-z0-9-]/g, "") || `group-${Date.now()}`;
+
+    setGroups((current) => [
+      ...current,
+      {
+        id,
+        name,
+        lastMessage: description || "Group created",
+        timestamp: "Now",
+        icon: "code",
+      },
+    ]);
+  };
 
   return (
     <>
@@ -30,13 +57,17 @@ export default function GroupList() {
         </div>
 
         <div className="flex-1 overflow-y-auto">
-          {mockGroups.map((group) => (
+          {groups.map((group) => (
             <GroupItem key={group.id} group={group} />
           ))}
         </div>
       </div>
 
-      <CreateGroupModal open={createOpen} onOpenChange={setCreateOpen} />
+      <CreateGroupModal
+        open={createOpen}
+        onOpenChange={setCreateOpen}
+        onCreateGroup={handleCreateGroup}
+      />
     </>
   );
 }

@@ -12,6 +12,8 @@ type Step = "request" | "reset"
 
 export default function Page() {
   const [step, setStep] = useState<Step>("request")
+  const [email, setEmail] = useState("emmanuel@example.com")
+  const [otp, setOtp] = useState("")
 
   const content = useMemo(() => {
     if (step === "request") {
@@ -25,10 +27,10 @@ export default function Page() {
 
     return {
       title: "Set a new password",
-      subtitle: "Enter the code sent to emmanuel@example.com",
+      subtitle: `Enter the code sent to ${email}`,
       icon: ShieldCheck,
     }
-  }, [step])
+  }, [step, email])
 
   return (
     <AuthShell title={content.title} subtitle={content.subtitle} icon={content.icon}>
@@ -37,11 +39,14 @@ export default function Page() {
           className="grid gap-4"
           onSubmit={(event) => {
             event.preventDefault()
+            const formData = new FormData(event.currentTarget)
+            const emailValue = formData.get("email") as string
+            setEmail(emailValue)
             setStep("reset")
           }}
         >
           <FormField label="Email">
-            <IconInput type="email" icon={Mail} placeholder="you@example.com" />
+            <IconInput type="email" icon={Mail} placeholder="you@example.com" value={email} onChange={(event) => setEmail(event.target.value)} />
           </FormField>
 
           <Button type="submit" variant="brand" size="form">
@@ -57,7 +62,7 @@ export default function Page() {
       ) : (
         <form className="grid gap-4" onSubmit={(event) => event.preventDefault()}>
           <div className="grid gap-4">
-            <OtpInput />
+            <OtpInput value={otp} onChange={setOtp} />
 
             <div className="text-center">
               <button
