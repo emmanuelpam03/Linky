@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { FormField } from "@/components/ui/form-field"
 import { Input } from "@/components/ui/input"
@@ -18,13 +18,6 @@ export default function CreateGroupModal({
 }: CreateGroupModalProps) {
   const [groupName, setGroupName] = useState("")
   const [description, setDescription] = useState("")
-
-  useEffect(() => {
-    if (!open) {
-      setGroupName("")
-      setDescription("")
-    }
-  }, [open])
 
   if (!open) return null
 
