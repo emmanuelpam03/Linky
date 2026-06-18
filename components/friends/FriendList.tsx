@@ -24,10 +24,8 @@ const FriendList = () => {
     <div className="flex h-full min-h-0 w-full flex-col bg-(--color-background-primary)">
       <header className="flex items-center justify-between gap-4 border-b border-(--color-border-tertiary) px-6 py-4">
         <div>
-          <h2 className="text-sm font-semibold text-(--color-text-primary)">
-            Friends
-          </h2>
-          <p className="mt-1 text-xs text-(--color-text-secondary)">
+          <h1 className="text-lg font-semibold text-(--color-text-primary)">Friends</h1>
+          <p className="mt-1 text-sm text-(--color-text-secondary)">
             Manage your contacts and start a conversation
           </p>
         </div>
@@ -37,13 +35,9 @@ const FriendList = () => {
             placeholder="Search friends"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            className="max-w-sm rounded-md border-(--color-border-tertiary) bg-(--color-background-secondary) text-(--color-text-primary) placeholder:text-(--color-text-tertiary)"
+            className="max-w-sm"
           />
-          <Button
-            variant="default"
-            size="sm"
-            className="rounded-md bg-(--color-brand-400) text-white hover:bg-(--color-brand-600)"
-          >
+          <Button variant="brand" size="sm" className="rounded-lg">
             <UserPlus className="size-4" />
             Add friend
           </Button>

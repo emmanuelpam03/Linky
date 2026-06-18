@@ -1,63 +1,57 @@
+"use client"
+
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
+import { FormField } from "@/components/ui/form-field"
 import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
 import { Upload } from "lucide-react"
 
 const ProfileForm = () => {
   return (
-    <section className="px-0 py-0">
-      <div className="flex items-start gap-5">
-        <Avatar
-          size="lg"
-          className="shrink-0"
-          style={{ width: 96, height: 96 }}
-        >
+    <section className="rounded-xl border border-(--color-border-tertiary) bg-(--color-background-primary) px-5 py-5 shadow-sm">
+      <h2 className="text-base font-semibold text-(--color-text-primary)">Profile</h2>
+      <p className="mt-1 text-sm text-(--color-text-secondary)">
+        Your public profile information visible to friends.
+      </p>
+
+      <div className="mt-5 flex items-start gap-5">
+        <Avatar size="lg" className="shrink-0" style={{ width: 96, height: 96 }}>
           <AvatarFallback className="bg-(--color-brand-50) text-2xl font-semibold text-(--color-brand-900)">
             EN
           </AvatarFallback>
         </Avatar>
 
         <div className="pt-2">
-          <div className="flex flex-wrap items-center gap-3">
-            <Button
-              size="sm"
-              className="gap-2 rounded-md bg-(--color-brand-400) text-white hover:bg-(--color-brand-600)"
-            >
-              <Upload className="size-4" />
-              Upload photo
-            </Button>
-          </div>
-          <p className="mt-2 text-sm text-(--color-text-secondary)">
-            JPG or PNG, max 2MB
-          </p>
+          <Button variant="brand" size="sm" className="gap-2 rounded-lg">
+            <Upload className="size-4" />
+            Upload photo
+          </Button>
+          <p className="mt-2 text-sm text-(--color-text-secondary)">JPG or PNG, max 2MB</p>
         </div>
       </div>
 
-      <div className="mt-6 grid gap-4 pb-6 border-b border-(--color-border-tertiary)">
-        <label className="grid gap-2">
-          <span className="text-sm font-medium text-(--color-text-secondary)">Full name</span>
-          <Input
-            defaultValue="Emmanuel"
-            className="h-12 border-(--color-border-tertiary) bg-(--color-background-secondary) text-base text-(--color-text-primary) placeholder:text-(--color-text-tertiary)"
-          />
-        </label>
+      <div className="mt-6 grid gap-4">
+        <FormField label="Full name">
+          <Input defaultValue="Emmanuel" />
+        </FormField>
 
-        <label className="grid gap-2">
-          <span className="text-sm font-medium text-(--color-text-secondary)">Username</span>
-          <Input
-            defaultValue="emmanuel.dev"
-            className="h-12 border-(--color-border-tertiary) bg-(--color-background-secondary) text-base text-(--color-text-primary) placeholder:text-(--color-text-tertiary)"
-          />
-        </label>
+        <FormField label="Username">
+          <Input defaultValue="emmanuel.dev" />
+        </FormField>
 
-        <label className="grid gap-2">
-          <span className="text-sm font-medium text-(--color-text-secondary)">Bio</span>
-          <textarea
+        <FormField label="Bio">
+          <Textarea
             defaultValue="Building things, one commit at a time"
             rows={3}
-            className="min-h-14 w-full rounded-md border border-(--color-border-tertiary) bg-(--color-background-secondary) px-4 py-3 text-base text-(--color-text-primary) outline-none transition-[color,box-shadow] placeholder:text-(--color-text-tertiary) focus:border-ring focus:ring-3 focus:ring-ring/50"
           />
-        </label>
+        </FormField>
+
+        <div className="flex justify-start pt-1">
+          <Button variant="brand" size="form" className="min-w-44">
+            Save changes
+          </Button>
+        </div>
       </div>
     </section>
   )

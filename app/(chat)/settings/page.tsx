@@ -21,11 +21,9 @@ const Page = () => {
           <PasswordForm />
 
           <section className="mt-6 rounded-xl border border-(--color-border-tertiary) bg-(--color-background-primary) px-5 py-5 shadow-sm">
-            <div className="flex items-center justify-between gap-4 rounded-xl bg-(--color-coral-50) px-5 py-4 text-(--color-coral-600)">
+            <div className="flex items-center justify-between gap-4 rounded-xl bg-(--color-coral-50) px-5 py-4">
               <div>
-                <h2 className="text-base font-semibold text-(--color-coral-800)">
-                  Log out
-                </h2>
+                <h2 className="text-base font-semibold text-(--color-coral-800)">Log out</h2>
                 <p className="mt-1 text-sm text-(--color-coral-600)">
                   You&apos;ll need to sign in again on this device
                 </p>
@@ -33,8 +31,8 @@ const Page = () => {
 
               <Button
                 variant="outline"
-                size="lg"
-                className="h-11 rounded-xl border-(--color-coral-400) bg-transparent px-5 text-(--color-coral-600) hover:bg-(--color-coral-100) hover:text-(--color-coral-800)"
+                size="form"
+                className="border-(--color-coral-400) bg-transparent px-5 text-(--color-coral-600) hover:bg-(--color-coral-100) hover:text-(--color-coral-800)"
               >
                 <LogOut className="size-4" />
                 Log out

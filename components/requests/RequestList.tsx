@@ -43,10 +43,10 @@ const RequestList = () => {
       <header className="border-b border-(--color-border-tertiary) px-6 py-4">
         <div className="flex items-center justify-between gap-4">
           <div>
-            <h1 className="text-sm font-semibold text-(--color-text-primary)">
+            <h1 className="text-lg font-semibold text-(--color-text-primary)">
               Friend requests
             </h1>
-            <p className="mt-1 text-xs text-(--color-text-secondary)">
+            <p className="mt-1 text-sm text-(--color-text-secondary)">
               Review incoming requests or check what you have already sent
             </p>
           </div>
@@ -124,17 +124,14 @@ const RequestList = () => {
 
               {activeTab === "incoming" ? (
                 <div className="flex items-center gap-3">
-                  <Button
-                    size="sm"
-                    className="gap-2 rounded-md bg-(--color-brand-400) text-white hover:bg-(--color-brand-600)"
-                  >
+                  <Button variant="brand" size="sm" className="gap-2 rounded-lg">
                     <Check className="size-4" />
                     Accept
                   </Button>
                   <Button
                     variant="outline"
                     size="sm"
-                    className="size-9 rounded-md border-(--color-border-secondary) bg-(--color-background-primary) p-0 text-(--color-text-secondary) hover:bg-(--color-background-secondary)"
+                    className="size-9 rounded-lg border-(--color-border-secondary) bg-(--color-background-primary) p-0 text-(--color-text-secondary) hover:bg-(--color-background-secondary)"
                     aria-label={`Decline ${request.name}`}
                   >
                     <X className="size-4" />

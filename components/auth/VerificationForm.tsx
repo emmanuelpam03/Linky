@@ -1,8 +1,10 @@
-import React from 'react'
+import { OtpInput } from "@/components/ui/otp-input"
 
 const VerificationForm = () => {
   return (
-    <div>VerificationForm</div>
+    <div className="grid gap-4">
+      <OtpInput />
+    </div>
   )
 }
 

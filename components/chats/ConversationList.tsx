@@ -21,14 +21,15 @@ export default function ConversationList() {
   return (
     <div className="flex h-full flex-col">
       <div className="border-b border-(--color-border-tertiary) px-4 py-4">
-        <h1 className="mb-3 text-lg font-semibold text-(--color-text-primary)">
-          Chats
-        </h1>
+        <h1 className="text-lg font-semibold text-(--color-text-primary)">Chats</h1>
+        <p className="mt-1 text-sm text-(--color-text-secondary)">
+          Search and open your conversations
+        </p>
         <Input
           placeholder="Search conversations"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          className="border-(--color-border-tertiary) bg-(--color-background-tertiary) text-(--color-text-primary) placeholder:text-(--color-text-tertiary)"
+          className="mt-3"
         />
       </div>
 

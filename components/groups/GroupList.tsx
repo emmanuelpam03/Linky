@@ -13,12 +13,16 @@ export default function GroupList() {
     <>
       <div className="flex h-full flex-col">
         <div className="flex items-center justify-between border-b border-(--color-border-tertiary) px-4 py-4">
-          <h1 className="text-lg font-semibold text-(--color-text-primary)">
-            Groups
-          </h1>
+          <div>
+            <h1 className="text-lg font-semibold text-(--color-text-primary)">Groups</h1>
+            <p className="mt-1 text-sm text-(--color-text-secondary)">
+              Create and manage your group chats
+            </p>
+          </div>
           <Button
+            variant="brand"
             size="sm"
-            className="rounded-md bg-(--color-brand-400) text-white hover:bg-(--color-brand-600)"
+            className="rounded-lg"
             onClick={() => setCreateOpen(true)}
           >
             + New

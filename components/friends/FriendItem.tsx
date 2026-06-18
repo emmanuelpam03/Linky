@@ -58,7 +58,7 @@ const FriendItem = ({ friend }: FriendItemProps) => {
         href={`/chats/${id}`}
         className={cn(
           buttonVariants({ variant: "outline", size: "sm" }),
-          "gap-2 rounded-md border-(--color-border-tertiary) bg-(--color-background-primary) text-(--color-text-primary) hover:bg-(--color-background-secondary)"
+          "gap-2 rounded-lg border-(--color-border-tertiary) bg-(--color-background-primary) text-(--color-text-primary) hover:bg-(--color-background-secondary)"
         )}
       >
         <MessageSquare className="size-4" />
