@@ -2,14 +2,19 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { MessageCircle, Users, Heart, UserPlus, Settings, Zap } from "lucide-react"
+import { Zap } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { MessageCircleIcon } from "../ui/message-circle"
+import { UsersIcon } from "../ui/users"
+import { HeartIcon } from "../ui/heart"
+import { UserRoundPlusIcon } from "../ui/user-round-plus"
+import { SettingsIcon } from "../ui/settings"
 
 const navItems = [
-  { label: "Chats", href: "/chats", icon: MessageCircle },
-  { label: "Groups", href: "/groups", icon: Users },
-  { label: "Friends", href: "/friends", icon: Heart },
-  { label: "Requests", href: "/requests", icon: UserPlus, badge: true },
+  { label: "Chats", href: "/chats", icon: MessageCircleIcon },
+  { label: "Groups", href: "/groups", icon: UsersIcon },
+  { label: "Friends", href: "/friends", icon: HeartIcon },
+  { label: "Requests", href: "/requests", icon: UserRoundPlusIcon, badge: true },
 ]
 
 export default function NavRail() {
@@ -47,7 +52,7 @@ export default function NavRail() {
       <div className="flex-1" />
 
       <Link href="/settings" className={itemClass(pathname.startsWith("/settings"))}>
-        <Settings size={20} />
+        <SettingsIcon size={20} />
         Settings
       </Link>
     </nav>

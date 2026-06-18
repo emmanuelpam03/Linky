@@ -25,9 +25,12 @@ export default function SignupForm() {
         <PasswordInput placeholder="At least 8 characters" />
       </FormField>
 
-      <Button type="submit" variant="brand" size="form">
-        Create account
-      </Button>
+      <Link href={"/verify"}>
+        <Button type="submit" variant="brand" size="form">
+          Create account
+        </Button>
+      </Link>
+      
 
       <p className="pt-1 text-center text-sm text-(--color-text-secondary)">
         Already have an account?{" "}
