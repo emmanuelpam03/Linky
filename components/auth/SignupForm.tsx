@@ -9,6 +9,7 @@ import { Loader2, Mail, UserRound } from "lucide-react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { signupSchema, SignupSchema } from "@/lib/schemas/auth.schema"
+import { signup } from "@/app/actions/auth/signup"
 
 export default function SignupForm() {
   const router = useRouter()
@@ -25,12 +26,20 @@ export default function SignupForm() {
 
   const onSubmit = async (data: SignupSchema) => {
     try {
-      // TODO: call signup API with `data`
-      console.log(data)
-      router.push("/verify")
+      const result = await signup(data)
+      if (result.success) {
+        // router.push("/verify")
+      } else {
+        form.setError("root.serverError", {
+          message:
+            typeof result.error === "string"
+              ? result.error
+              : "Something went wrong",
+        })
+      }
     } catch (error) {
       console.error("Signup failed:", error)
-      // Optionally set a form-level error here
+      form.setError("root.serverError", { message: "An unexpected error occurred" })
     }
   }
 
