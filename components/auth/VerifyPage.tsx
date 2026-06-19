@@ -4,6 +4,9 @@ import { useRef, useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, ArrowRight, MailOpen } from "lucide-react";
 import Link from "next/link";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { VerifyOtpSchema, verifyOtpSchema } from "@/lib/schemas/auth.schema";
+import { useForm } from "react-hook-form";
 
 const CODE_LENGTH = 6;
 const EXPIRY_SECONDS = 5 * 60; // 5 minutes
@@ -13,13 +16,20 @@ export default function VerifyPage() {
   const searchParams = useSearchParams();
   const email = searchParams.get("email");
 
-  const [code, setCode] = useState<string[]>(Array(CODE_LENGTH).fill(""));
   const [seconds, setSeconds] = useState(EXPIRY_SECONDS);
   const [focusedIndex, setFocusedIndex] = useState<number | null>(null);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
-  const isFilled = code.every((c) => c !== "");
   const isExpired = seconds <= 0;
+
+  const verifyOtpForm = useForm<VerifyOtpSchema>({
+    resolver: zodResolver(verifyOtpSchema),
+    defaultValues: { otp: "" },
+  });
+
+  const otp = verifyOtpForm.watch("otp");
+  const digits = otp.padEnd(CODE_LENGTH, " ").split("").slice(0, CODE_LENGTH);
+  const isFilled = otp.length === CODE_LENGTH;
 
   // Countdown timer
   useEffect(() => {
@@ -34,18 +44,23 @@ export default function VerifyPage() {
     return `${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
   };
 
+  const setOtpValue = (value: string) => {
+    verifyOtpForm.setValue("otp", value, { shouldValidate: true });
+  };
+
   const handleChange = (index: number, value: string) => {
     if (!/^\d*$/.test(value)) return; // digits only
-    const updated = [...code];
-    updated[index] = value.slice(-1); // only last character
-    setCode(updated);
+    const chars = otp.padEnd(CODE_LENGTH, " ").split("");
+    chars[index] = value.slice(-1) || " ";
+    const updated = chars.join("").trimEnd();
+    setOtpValue(updated);
     if (value && index < CODE_LENGTH - 1) {
       inputRefs.current[index + 1]?.focus();
     }
   };
 
   const handleKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Backspace" && !code[index] && index > 0) {
+    if (e.key === "Backspace" && !digits[index]?.trim() && index > 0) {
       inputRefs.current[index - 1]?.focus();
     }
   };
@@ -54,28 +69,27 @@ export default function VerifyPage() {
     e.preventDefault();
     const pasted = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, CODE_LENGTH);
     if (!pasted) return;
-    const updated = [...code];
-    pasted.split("").forEach((char, i) => (updated[i] = char));
-    setCode(updated);
-    const nextEmpty = updated.findIndex((c) => !c);
-    inputRefs.current[nextEmpty !== -1 ? nextEmpty : CODE_LENGTH - 1]?.focus();
+    setOtpValue(pasted);
+    const nextIndex = Math.min(pasted.length, CODE_LENGTH - 1);
+    inputRefs.current[nextIndex]?.focus();
   };
 
   const handleResend = () => {
-    setCode(Array(CODE_LENGTH).fill(""));
+    // TODO: call resend code API
+    verifyOtpForm.reset({ otp: "" });
     setSeconds(EXPIRY_SECONDS);
     inputRefs.current[0]?.focus();
   };
 
-  const handleSubmit = () => {
-    const fullCode = code.join("");
-    if (fullCode.length < CODE_LENGTH || isExpired) return;
-    // TODO: call verify API with fullCode
+  const onSubmit = (data: VerifyOtpSchema) => {
+    if (isExpired) return;
+    // TODO: call verify API with data
+    console.log(data);
     router.push("/chats");
   };
 
   return (
-    <>
+    <form onSubmit={verifyOtpForm.handleSubmit(onSubmit)}>
       {/* Icon */}
       <div className="flex justify-center mb-6">
         <div className="w-16 h-16 rounded-full bg-(--color-brand-50) flex items-center justify-center">
@@ -99,7 +113,7 @@ export default function VerifyPage() {
         role="group"
         aria-label="Verification code"
       >
-        {code.map((digit, i) => {
+        {digits.map((digit, i) => {
           const isActive = focusedIndex === i;
           return (
             <input
@@ -109,7 +123,7 @@ export default function VerifyPage() {
               inputMode="numeric"
               autoComplete="one-time-code"
               maxLength={1}
-              value={digit}
+              value={digit.trim()}
               aria-label={`Digit ${i + 1} of ${CODE_LENGTH}`}
               onChange={(e) => handleChange(i, e.target.value)}
               onKeyDown={(e) => handleKeyDown(i, e)}
@@ -124,6 +138,12 @@ export default function VerifyPage() {
           );
         })}
       </div>
+
+      {verifyOtpForm.formState.errors.otp && (
+        <p className="text-sm text-(--color-coral-400) text-center mb-3">
+          {verifyOtpForm.formState.errors.otp.message}
+        </p>
+      )}
 
       {/* Timer / expiry message */}
       {isExpired ? (
@@ -147,7 +167,7 @@ export default function VerifyPage() {
 
       {/* Verify button */}
       <button
-        onClick={handleSubmit}
+        type="submit"
         disabled={!isFilled || isExpired}
         className="w-full flex items-center justify-center gap-2 bg-(--color-brand-400) text-white font-medium text-sm py-3 rounded-lg mb-4 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
       >
@@ -158,6 +178,7 @@ export default function VerifyPage() {
       <p className="text-center text-sm text-(--color-text-secondary) mb-4">
         Didn&apos;t receive a code?{" "}
         <button
+          type="button"
           onClick={handleResend}
           disabled={seconds > 0}
           className="font-medium text-(--color-brand-400) disabled:text-(--color-text-tertiary) disabled:cursor-not-allowed"
@@ -175,6 +196,6 @@ export default function VerifyPage() {
           <ArrowLeft size={14} /> Back to sign up
         </Link>
       </div>
-    </>
+    </form>
   );
 }
