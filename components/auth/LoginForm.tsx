@@ -8,6 +8,7 @@ import { loginSchema, LoginSchema } from "@/lib/schemas/auth.schema"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useRouter } from "next/navigation"
+import { signIn } from "@/lib/auth-client"
 
 export default function LoginForm() {
   const router = useRouter()
@@ -21,16 +22,21 @@ export default function LoginForm() {
   })
 
   const onSubmit = async (data: LoginSchema) => {
-    try {
-      // TODO: call login API with `data`
-      console.log(data)
-      router.push("/")
-    } catch (error) {
-      console.error("Failed to login:", error)
-      // Optionally display error to user
-    }
+      const result = await signIn.email({
+        email: data.email,
+        password: data.password,
+        callbackURL: "/chats",
+      });
     
-  }
+      if (result.error) {
+        form.setError("root.serverError", {
+          message: result.error.message,
+        });
+        return;
+      }
+    
+      router.push("/chats");
+    };
 
   return (
     <form className="grid gap-4" onSubmit={form.handleSubmit(onSubmit)}>

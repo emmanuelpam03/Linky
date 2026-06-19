@@ -9,7 +9,7 @@ import { Loader2, Mail, UserRound } from "lucide-react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { signupSchema, SignupSchema } from "@/lib/schemas/auth.schema"
-import { signup } from "@/app/actions/auth/signup"
+import { signUp } from "@/lib/auth-client"
 
 export default function SignupForm() {
   const router = useRouter()
@@ -25,23 +25,23 @@ export default function SignupForm() {
   })
 
   const onSubmit = async (data: SignupSchema) => {
-    try {
-      const result = await signup(data)
-      if (result.success) {
-        // router.push("/verify")
-      } else {
-        form.setError("root.serverError", {
-          message:
-            typeof result.error === "string"
-              ? result.error
-              : "Something went wrong",
-        })
-      }
-    } catch (error) {
-      console.error("Signup failed:", error)
-      form.setError("root.serverError", { message: "An unexpected error occurred" })
+    const result = await signUp.email({
+      email: data.email,
+      password: data.password,
+      name: data.fullName,
+      // username: data.username,
+      callbackURL: "/verify",
+    });
+  
+    if (result.error) {
+      form.setError("root.serverError", {
+        message: result.error.message,
+      });
+      return;
     }
-  }
+  
+    router.push("/verify");
+  };
 
   return (
     <form className="grid gap-4" onSubmit={form.handleSubmit(onSubmit)}>
@@ -73,6 +73,11 @@ export default function SignupForm() {
       {form.formState.errors.password && (
         <p className="text-sm text-(--color-coral-400)">{form.formState.errors.password.message}</p>
       )}
+
+      {form.formState.errors.root?.serverError && (
+        <p className="text-sm text-(--color-coral-400)">{form.formState.errors.root.serverError.message}</p>
+      )}
+
       <Button type="submit" variant="brand" size="form" disabled={form.formState.isSubmitting}>
         {form.formState.isSubmitting ? <Loader2 className="size-4 animate-spin" /> : <span>Create account</span>}
       </Button>
