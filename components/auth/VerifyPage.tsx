@@ -74,22 +74,31 @@ export default function VerifyPage() {
     inputRefs.current[nextIndex]?.focus();
   };
 
-  const handleResend = () => {
-    // TODO: call resend code API
-    verifyOtpForm.reset({ otp: "" });
-    setSeconds(EXPIRY_SECONDS);
-    inputRefs.current[0]?.focus();
-  };
+  const handleResend = async () => {
+    try {
+      // TODO: call resend code API
+      verifyOtpForm.reset({ otp: "" });
+      setSeconds(EXPIRY_SECONDS);
+      inputRefs.current[0]?.focus();
+    } catch (error) {
+      console.error("Failed to resend code:", error)
+      // Optionally display error to user
+    }
+  }
 
-  const onSubmit = (data: VerifyOtpSchema) => {
-    if (isExpired) return;
-    // TODO: call verify API with data
-    console.log(data);
-    router.push("/chats");
-  };
+  const onVerifyOtpSubmit = async (data: VerifyOtpSchema) => {
+    try {
+      // TODO: call verify API with data
+      console.log(data);
+      router.push("/chats");
+    } catch (error) {
+      console.error("Failed to verify OTP:", error)
+      // Optionally display error to user
+    }
+  }
 
   return (
-    <form onSubmit={verifyOtpForm.handleSubmit(onSubmit)}>
+    <form onSubmit={verifyOtpForm.handleSubmit(onVerifyOtpSubmit)}>
       {/* Icon */}
       <div className="flex justify-center mb-6">
         <div className="w-16 h-16 rounded-full bg-(--color-brand-50) flex items-center justify-center">

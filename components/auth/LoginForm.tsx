@@ -21,9 +21,15 @@ export default function LoginForm() {
   })
 
   const onSubmit = async (data: LoginSchema) => {
-    // TODO: call login API with `data`
-    console.log(data)
-    router.push("/")
+    try {
+      // TODO: call login API with `data`
+      console.log(data)
+      router.push("/")
+    } catch (error) {
+      console.error("Failed to login:", error)
+      // Optionally display error to user
+    }
+    
   }
 
   return (

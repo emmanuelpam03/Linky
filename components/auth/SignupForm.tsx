@@ -24,9 +24,14 @@ export default function SignupForm() {
   })
 
   const onSubmit = async (data: SignupSchema) => {
-    // TODO: call signup API with `data`
-    console.log(data)
-    router.push("/verify")
+    try {
+      // TODO: call signup API with `data`
+      console.log(data)
+      router.push("/verify")
+    } catch (error) {
+      console.error("Signup failed:", error)
+      // Optionally set a form-level error here
+    }
   }
 
   return (

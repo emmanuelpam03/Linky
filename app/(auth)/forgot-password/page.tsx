@@ -31,10 +31,15 @@ export default function Page() {
   })
 
   const onForgotPasswordSubmit = async (data: ForgotPasswordSchema) => {
-    // TODO: call forgot password API with `data`
-    console.log(data)
-    setEmail(data.email)
-    setStep("verify")
+    try {
+      // TODO: call forgot password API with `data`
+      console.log(data)
+      setEmail(data.email)
+      setStep("verify")
+    } catch (error) {
+      console.error("Failed to send reset code:", error)
+      // Optionally display error to user
+    }
   }
 
   const verifyOtpForm = useForm<VerifyOtpSchema>({
@@ -43,9 +48,14 @@ export default function Page() {
   })
 
   const onVerifyOtpSubmit = async (data: VerifyOtpSchema) => {
-    // TODO: call verify OTP API with `data`
-    console.log(data)
-    setStep("reset")
+    try {
+      // TODO: call verify OTP API with `data`
+      console.log(data)
+      setStep("reset")
+    } catch (error) {
+      console.error("Failed to verify OTP:", error)
+      // Optionally display error to user
+    }
   }
 
   const resetPasswordForm = useForm<ResetPasswordSchema>({
@@ -54,14 +64,25 @@ export default function Page() {
   })
 
   const onResetPasswordSubmit = async (data: ResetPasswordSchema) => {
-    // TODO: call reset password API with `data`
-    console.log(data)
-    router.push("/login")
+    try {
+      // TODO: call reset password API with `data`
+      console.log(data)
+      router.push("/login")
+    } catch (error) {
+      console.error("Failed to reset password:", error)
+      // Optionally display error to user
+    }
+
   }
 
   const onResendCode = async () => {
-    // TODO: call resend code API
-    console.log("Resend code")
+    try {
+      // TODO: call resend code API
+      console.log("Resend code")
+    } catch (error) {
+      console.error("Failed to resend code:", error)
+      // Optionally display error to user
+    }
   }
 
   const onBackToLogin = () => {
@@ -84,7 +105,7 @@ export default function Page() {
         }
       : {
           title: "Set a new password",
-          subtitle: "Choose a new password for your account",
+          subtitle: email ? `Enter the code sent to ${email}` : "Enter the verification code sent to your email",
           icon: ShieldCheck,
         }
 
