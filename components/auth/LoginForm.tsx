@@ -54,6 +54,10 @@ export default function LoginForm() {
         <p className="text-sm text-(--color-coral-400)">{form.formState.errors.password.message}</p>
       )}
 
+      {form.formState.errors.root?.serverError && (
+        <p className="text-sm text-(--color-coral-400)">{form.formState.errors.root.serverError.message}</p>
+      )}
+
       <div className="flex items-center justify-between pt-1">
         <label className="flex items-center gap-2 text-sm text-(--color-text-secondary)">
           <input
