@@ -1,4 +1,5 @@
 import { createAuthClient } from "better-auth/react";
+import { usernameClient } from "better-auth/client/plugins";
 
 const baseURL = process.env.NEXT_PUBLIC_APP_URL;
 if (!baseURL) {
@@ -8,6 +9,7 @@ if (!baseURL) {
 }
 
 export const authClient = createAuthClient({
+  plugins: [usernameClient()],
   baseURL,
 });
 
