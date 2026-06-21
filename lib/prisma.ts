@@ -1,9 +1,9 @@
-import { PrismaClient } from "../generated/prisma/client";
-import { PrismaNeon } from "@prisma/adapter-neon";
+import { PrismaClient } from "@/generated/prisma/client";
+import { PrismaPg } from "@prisma/adapter-pg";
 
-// Use Prisma's Neon adapter (serverless Pool) to avoid using `pg` sockets.
-// Pass the Neon connection string as the pool config.
-const adapter = new PrismaNeon({ connectionString: process.env.DATABASE_URL! });
+const adapter = new PrismaPg({
+  connectionString: process.env.DATABASE_URL!,
+});
 
 const globalForPrisma = global as unknown as {
   prisma: PrismaClient;
