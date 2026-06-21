@@ -29,7 +29,7 @@ export default function SignupForm() {
       email: data.email,
       password: data.password,
       name: data.fullName,
-      // username: data.username,
+      username: data.username,
       callbackURL: "/verify",
     });
   
