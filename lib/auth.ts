@@ -31,7 +31,7 @@ export const auth = betterAuth({
       overrideDefaultEmailVerification: true,
       async sendVerificationOTP({ email, otp, type }) {
         if (type === "email-verification") {
-          void sendEmail({
+          await sendEmail({
             to: email,
             subject: "Verify your email",
             html: `
@@ -48,7 +48,7 @@ export const auth = betterAuth({
         }
 
         if (type === "forget-password") {
-          void sendEmail({
+          await sendEmail({
             to: email,
             subject: "Reset your password",
             html: `

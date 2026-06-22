@@ -73,7 +73,7 @@ export default function Page() {
     });
 
     if (result.error) {
-      verifyOtpForm.setError("root.serverError", {
+      verifyOtpForm.setError("otp", {
         message: result.error.message ?? "Invalid or expired code.",
       });
       return;
@@ -138,13 +138,9 @@ export default function Page() {
           }
         : {
             title: "Set a new password",
-            subtitle: email
-              ? `Enter the code sent to ${email}`
-              : "Enter the verification code sent to your email",
+            subtitle: "Create a strong password for your account",
             icon: ShieldCheck,
           };
-
-  return (
     <AuthShell
       title={content.title}
       subtitle={content.subtitle}
@@ -208,6 +204,12 @@ export default function Page() {
           {verifyOtpForm.formState.errors.otp && (
             <p className="text-sm text-(--color-coral-400) text-center">
               {verifyOtpForm.formState.errors.otp.message}
+            </p>
+          )}
+
+          {verifyOtpForm.formState.errors.root?.serverError && (
+            <p className="text-sm text-(--color-coral-400) text-center">
+              {verifyOtpForm.formState.errors.root.serverError.message}
             </p>
           )}
 
@@ -275,6 +277,12 @@ export default function Page() {
               {resetPasswordForm.formState.errors.confirmPassword.message}
             </p>
           )}
+
+          {resetPasswordForm.formState.errors.root?.serverError && (
+           <p className="text-sm text-(--color-coral-400)">
+             {resetPasswordForm.formState.errors.root.serverError.message}
+           </p>
+         )}
 
           <Button
             type="submit"

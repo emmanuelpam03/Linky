@@ -93,7 +93,8 @@ export default function VerifyPage() {
       setSeconds(EXPIRY_SECONDS);
       inputRefs.current[0]?.focus();
     } catch (error) {
-      console.error("Failed to send verification OTP:", error);
+      console.error("Failed to resend verification OTP:", error);
+      verifyOtpForm.setError("otp", { message: "Failed to resend code. Please try again." });
     }
   };
 
@@ -111,7 +112,7 @@ export default function VerifyPage() {
       router.push("/chats");
     } catch (error) {
       console.error("Failed to verify OTP:", error);
-      // Optionally display error to user
+      verifyOtpForm.setError("otp", { message: "Something went wrong. Please try again." });
     }
   };
 
