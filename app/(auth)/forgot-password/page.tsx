@@ -141,173 +141,172 @@ export default function Page() {
             subtitle: "Create a strong password for your account",
             icon: ShieldCheck,
           };
-    <AuthShell
-      title={content.title}
-      subtitle={content.subtitle}
-      icon={content.icon}
-    >
-      {step === "request" && (
-        <form
-          className="grid gap-4"
-          onSubmit={forgotPasswordForm.handleSubmit(onForgotPasswordSubmit)}
-        >
-          <FormField label="Email">
-            <IconInput
-              type="email"
-              icon={Mail}
-              placeholder="you@example.com"
-              {...forgotPasswordForm.register("email")}
-            />
-          </FormField>
-          {forgotPasswordForm.formState.errors.email && (
-            <p className="text-sm text-(--color-coral-400)">
-              {forgotPasswordForm.formState.errors.email.message}
-            </p>
-          )}
-
-          <Button
-            type="submit"
-            variant="brand"
-            size="form"
-            disabled={forgotPasswordForm.formState.isSubmitting}
-          >
-            {forgotPasswordForm.formState.isSubmitting ? (
-              <Loader2 className="size-4 animate-spin" />
-            ) : (
-              <span>Send reset code</span>
-            )}
-          </Button>
-
-          <p className="pt-1 text-center text-sm text-(--color-text-secondary)">
-            <button
-              type="button"
-              onClick={onBackToLogin}
-              className={`inline-flex items-center gap-1 ${authLinkClass}`}
-            >
-              <ArrowLeft className="size-3.5" /> Back to login
-            </button>
-          </p>
-        </form>
-      )}
-
-      {step === "verify" && (
-        <form
-          className="grid gap-4"
-          onSubmit={verifyOtpForm.handleSubmit(onVerifyOtpSubmit)}
-        >
-          <OtpInput
-            value={verifyOtpForm.watch("otp")}
-            onChange={(val) =>
-              verifyOtpForm.setValue("otp", val, { shouldValidate: true })
-            }
+  <AuthShell
+    title={content.title}
+    subtitle={content.subtitle}
+    icon={content.icon}
+  >
+    {step === "request" && (
+      <form
+        className="grid gap-4"
+        onSubmit={forgotPasswordForm.handleSubmit(onForgotPasswordSubmit)}
+      >
+        <FormField label="Email">
+          <IconInput
+            type="email"
+            icon={Mail}
+            placeholder="you@example.com"
+            {...forgotPasswordForm.register("email")}
           />
-          {verifyOtpForm.formState.errors.otp && (
-            <p className="text-sm text-(--color-coral-400) text-center">
-              {verifyOtpForm.formState.errors.otp.message}
-            </p>
-          )}
-
-          {verifyOtpForm.formState.errors.root?.serverError && (
-            <p className="text-sm text-(--color-coral-400) text-center">
-              {verifyOtpForm.formState.errors.root.serverError.message}
-            </p>
-          )}
-
-          <div className="text-center">
-            <button
-              type="button"
-              onClick={() => setStep("request")}
-              className={`text-sm ${authLinkClass}`}
-            >
-              Change email
-            </button>
-          </div>
-
-          <Button
-            type="submit"
-            variant="brand"
-            size="form"
-            disabled={verifyOtpForm.formState.isSubmitting}
-          >
-            {verifyOtpForm.formState.isSubmitting ? (
-              <Loader2 className="size-4 animate-spin" />
-            ) : (
-              <span>Verify code</span>
-            )}
-          </Button>
-
-          <p className="pt-1 text-center text-sm text-(--color-text-secondary)">
-            Didn&apos;t receive a code?{" "}
-            <button
-              type="button"
-              onClick={onResendCode}
-              className={`inline-flex items-center gap-1 ${authLinkClass}`}
-            >
-              Resend <RotateCcw className="size-3.5" />
-            </button>
+        </FormField>
+        {forgotPasswordForm.formState.errors.email && (
+          <p className="text-sm text-(--color-coral-400)">
+            {forgotPasswordForm.formState.errors.email.message}
           </p>
-        </form>
-      )}
+        )}
 
-      {step === "reset" && (
-        <form
-          className="grid gap-4"
-          onSubmit={resetPasswordForm.handleSubmit(onResetPasswordSubmit)}
+        <Button
+          type="submit"
+          variant="brand"
+          size="form"
+          disabled={forgotPasswordForm.formState.isSubmitting}
         >
-          <FormField label="New password">
-            <PasswordInput
-              placeholder="At least 8 characters"
-              {...resetPasswordForm.register("newPassword")}
-            />
-          </FormField>
-          {resetPasswordForm.formState.errors.newPassword && (
-            <p className="text-sm text-(--color-coral-400)">
-              {resetPasswordForm.formState.errors.newPassword.message}
-            </p>
+          {forgotPasswordForm.formState.isSubmitting ? (
+            <Loader2 className="size-4 animate-spin" />
+          ) : (
+            <span>Send reset code</span>
           )}
+        </Button>
 
-          <FormField label="Confirm password">
-            <PasswordInput
-              placeholder="Re-enter password"
-              {...resetPasswordForm.register("confirmPassword")}
-            />
-          </FormField>
-          {resetPasswordForm.formState.errors.confirmPassword && (
-            <p className="text-sm text-(--color-coral-400)">
-              {resetPasswordForm.formState.errors.confirmPassword.message}
-            </p>
-          )}
-
-          {resetPasswordForm.formState.errors.root?.serverError && (
-           <p className="text-sm text-(--color-coral-400)">
-             {resetPasswordForm.formState.errors.root.serverError.message}
-           </p>
-         )}
-
-          <Button
-            type="submit"
-            variant="brand"
-            size="form"
-            disabled={resetPasswordForm.formState.isSubmitting}
+        <p className="pt-1 text-center text-sm text-(--color-text-secondary)">
+          <button
+            type="button"
+            onClick={onBackToLogin}
+            className={`inline-flex items-center gap-1 ${authLinkClass}`}
           >
-            {resetPasswordForm.formState.isSubmitting ? (
-              <Loader2 className="size-4 animate-spin" />
-            ) : (
-              <span>Reset password</span>
-            )}
-          </Button>
+            <ArrowLeft className="size-3.5" /> Back to login
+          </button>
+        </p>
+      </form>
+    )}
 
-          <p className="pt-1 text-center text-sm text-(--color-text-secondary)">
-            <button
-              type="button"
-              onClick={onBackToLogin}
-              className={`inline-flex items-center gap-1 ${authLinkClass}`}
-            >
-              <ArrowLeft className="size-3.5" /> Back to login
-            </button>
+    {step === "verify" && (
+      <form
+        className="grid gap-4"
+        onSubmit={verifyOtpForm.handleSubmit(onVerifyOtpSubmit)}
+      >
+        <OtpInput
+          value={verifyOtpForm.watch("otp")}
+          onChange={(val) =>
+            verifyOtpForm.setValue("otp", val, { shouldValidate: true })
+          }
+        />
+        {verifyOtpForm.formState.errors.otp && (
+          <p className="text-sm text-(--color-coral-400) text-center">
+            {verifyOtpForm.formState.errors.otp.message}
           </p>
-        </form>
-      )}
-    </AuthShell>
-  );
+        )}
+
+        {verifyOtpForm.formState.errors.root?.serverError && (
+          <p className="text-sm text-(--color-coral-400) text-center">
+            {verifyOtpForm.formState.errors.root.serverError.message}
+          </p>
+        )}
+
+        <div className="text-center">
+          <button
+            type="button"
+            onClick={() => setStep("request")}
+            className={`text-sm ${authLinkClass}`}
+          >
+            Change email
+          </button>
+        </div>
+
+        <Button
+          type="submit"
+          variant="brand"
+          size="form"
+          disabled={verifyOtpForm.formState.isSubmitting}
+        >
+          {verifyOtpForm.formState.isSubmitting ? (
+            <Loader2 className="size-4 animate-spin" />
+          ) : (
+            <span>Verify code</span>
+          )}
+        </Button>
+
+        <p className="pt-1 text-center text-sm text-(--color-text-secondary)">
+          Didn&apos;t receive a code?{" "}
+          <button
+            type="button"
+            onClick={onResendCode}
+            className={`inline-flex items-center gap-1 ${authLinkClass}`}
+          >
+            Resend <RotateCcw className="size-3.5" />
+          </button>
+        </p>
+      </form>
+    )}
+
+    {step === "reset" && (
+      <form
+        className="grid gap-4"
+        onSubmit={resetPasswordForm.handleSubmit(onResetPasswordSubmit)}
+      >
+        <FormField label="New password">
+          <PasswordInput
+            placeholder="At least 8 characters"
+            {...resetPasswordForm.register("newPassword")}
+          />
+        </FormField>
+        {resetPasswordForm.formState.errors.newPassword && (
+          <p className="text-sm text-(--color-coral-400)">
+            {resetPasswordForm.formState.errors.newPassword.message}
+          </p>
+        )}
+
+        <FormField label="Confirm password">
+          <PasswordInput
+            placeholder="Re-enter password"
+            {...resetPasswordForm.register("confirmPassword")}
+          />
+        </FormField>
+        {resetPasswordForm.formState.errors.confirmPassword && (
+          <p className="text-sm text-(--color-coral-400)">
+            {resetPasswordForm.formState.errors.confirmPassword.message}
+          </p>
+        )}
+
+        {resetPasswordForm.formState.errors.root?.serverError && (
+          <p className="text-sm text-(--color-coral-400)">
+            {resetPasswordForm.formState.errors.root.serverError.message}
+          </p>
+        )}
+
+        <Button
+          type="submit"
+          variant="brand"
+          size="form"
+          disabled={resetPasswordForm.formState.isSubmitting}
+        >
+          {resetPasswordForm.formState.isSubmitting ? (
+            <Loader2 className="size-4 animate-spin" />
+          ) : (
+            <span>Reset password</span>
+          )}
+        </Button>
+
+        <p className="pt-1 text-center text-sm text-(--color-text-secondary)">
+          <button
+            type="button"
+            onClick={onBackToLogin}
+            className={`inline-flex items-center gap-1 ${authLinkClass}`}
+          >
+            <ArrowLeft className="size-3.5" /> Back to login
+          </button>
+        </p>
+      </form>
+    )}
+  </AuthShell>;
 }
