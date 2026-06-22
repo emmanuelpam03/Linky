@@ -7,6 +7,7 @@ import Link from "next/link";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { VerifyOtpSchema, verifyOtpSchema } from "@/lib/schemas/auth.schema";
 import { useForm } from "react-hook-form";
+import { resendVerificationOTP, verifyEmail } from "@/app/actions/auth/verify";
 
 const CODE_LENGTH = 6;
 const EXPIRY_SECONDS = 5 * 60; // 5 minutes
@@ -59,7 +60,10 @@ export default function VerifyPage() {
     }
   };
 
-  const handleKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
+  const handleKeyDown = (
+    index: number,
+    e: React.KeyboardEvent<HTMLInputElement>,
+  ) => {
     if (e.key === "Backspace" && !digits[index]?.trim() && index > 0) {
       inputRefs.current[index - 1]?.focus();
     }
@@ -67,7 +71,10 @@ export default function VerifyPage() {
 
   const handlePaste = (e: React.ClipboardEvent) => {
     e.preventDefault();
-    const pasted = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, CODE_LENGTH);
+    const pasted = e.clipboardData
+      .getData("text")
+      .replace(/\D/g, "")
+      .slice(0, CODE_LENGTH);
     if (!pasted) return;
     setOtpValue(pasted);
     const nextIndex = Math.min(pasted.length, CODE_LENGTH - 1);
@@ -76,26 +83,37 @@ export default function VerifyPage() {
 
   const handleResend = async () => {
     try {
-      // TODO: call resend code API
+      if (!email) return;
+      const result = await resendVerificationOTP(email);
+      if (!result.success) {
+        verifyOtpForm.setError("otp", { message: result.error });
+        return;
+      }
       verifyOtpForm.reset({ otp: "" });
       setSeconds(EXPIRY_SECONDS);
       inputRefs.current[0]?.focus();
     } catch (error) {
-      console.error("Failed to resend code:", error)
-      // Optionally display error to user
+      console.error("Failed to send verification OTP:", error);
     }
-  }
+  };
 
   const onVerifyOtpSubmit = async (data: VerifyOtpSchema) => {
     try {
-      // TODO: call verify API with data
-      console.log(data);
+      if (!email) {
+        verifyOtpForm.setError("otp", { message: "Email not found. Please sign up again." });
+        return;
+      }
+      const result = await verifyEmail(email, data.otp);
+      if (!result.success) {
+        verifyOtpForm.setError("otp", { message: result.error });
+        return;
+      }
       router.push("/chats");
     } catch (error) {
-      console.error("Failed to verify OTP:", error)
+      console.error("Failed to verify OTP:", error);
       // Optionally display error to user
     }
-  }
+  };
 
   return (
     <form onSubmit={verifyOtpForm.handleSubmit(onVerifyOtpSubmit)}>
@@ -127,7 +145,9 @@ export default function VerifyPage() {
           return (
             <input
               key={i}
-              ref={(el) => { inputRefs.current[i] = el; }}
+              ref={(el) => {
+                inputRefs.current[i] = el;
+              }}
               type="text"
               inputMode="numeric"
               autoComplete="one-time-code"
@@ -137,11 +157,14 @@ export default function VerifyPage() {
               onChange={(e) => handleChange(i, e.target.value)}
               onKeyDown={(e) => handleKeyDown(i, e)}
               onFocus={() => setFocusedIndex(i)}
-              onBlur={() => setFocusedIndex((current) => (current === i ? null : current))}
+              onBlur={() =>
+                setFocusedIndex((current) => (current === i ? null : current))
+              }
               className={`w-11 h-14 text-center text-xl font-semibold rounded-lg border bg-transparent focus:outline-none transition-all
-                ${isActive
-                  ? "border-(--color-brand-400) ring-2 ring-(--color-brand-50)"
-                  : "border-(--color-border-secondary)"
+                ${
+                  isActive
+                    ? "border-(--color-brand-400) ring-2 ring-(--color-brand-50)"
+                    : "border-(--color-border-secondary)"
                 }`}
             />
           );
@@ -177,7 +200,7 @@ export default function VerifyPage() {
       {/* Verify button */}
       <button
         type="submit"
-        disabled={!isFilled || isExpired}
+        disabled={!isFilled || isExpired || verifyOtpForm.formState.isSubmitting}
         className="w-full flex items-center justify-center gap-2 bg-(--color-brand-400) text-white font-medium text-sm py-3 rounded-lg mb-4 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
       >
         Verify account <ArrowRight size={16} />

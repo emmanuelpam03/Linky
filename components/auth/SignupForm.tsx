@@ -14,8 +14,7 @@ import { Loader2, Mail, UserRound } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { signupSchema, SignupSchema } from "@/lib/schemas/auth.schema";
-import { signUp } from "@/app/actions/signup";
-// import { signUp } from "@/lib/auth-client";
+import { signUp } from "@/lib/auth-client";
 
 export default function SignupForm() {
   const router = useRouter();
@@ -31,7 +30,15 @@ export default function SignupForm() {
   });
 
   const onSubmit = async (data: SignupSchema) => {
-    const result = await signUp(data);
+    const result = await signUp.email({
+      email: data.email,
+      password: data.password,
+      name: data.fullName,
+      username: data.username,
+      callbackURL: "/verify",
+    });
+
+    console.log("RESULT:", result);
 
     if (result.error) {
       console.log("AUTH ERROR:", result.error);
@@ -39,6 +46,8 @@ export default function SignupForm() {
       form.setError("root.serverError", {
         message: result.error.message,
       });
+
+      return;
     }
 
     router.push(`/verify?email=${encodeURIComponent(data.email)}`);
@@ -103,11 +112,6 @@ export default function SignupForm() {
       {form.formState.errors.root?.serverError && (
         <p className="text-sm text-(--color-coral-400)">
           {form.formState.errors.root.serverError.message}
-        </p>
-      )}
-      {form.formState.errors.root && (
-        <p className="text-sm text-(--color-coral-400) text-center">
-          {form.formState.errors.root.message}
         </p>
       )}
 

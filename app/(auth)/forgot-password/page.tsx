@@ -1,12 +1,24 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import AuthShell from "@/components/auth/AuthShell"
-import { Button } from "@/components/ui/button"
-import { authLinkClass, FormField, IconInput, PasswordInput } from "@/components/ui/form-field"
-import { OtpInput } from "@/components/ui/otp-input"
-import { KeyRound, Mail, ShieldCheck, RotateCcw, Loader2, ArrowLeft } from "lucide-react"
-import { zodResolver } from "@hookform/resolvers/zod"
+import { useState } from "react";
+import AuthShell from "@/components/auth/AuthShell";
+import { Button } from "@/components/ui/button";
+import {
+  authLinkClass,
+  FormField,
+  IconInput,
+  PasswordInput,
+} from "@/components/ui/form-field";
+import { OtpInput } from "@/components/ui/otp-input";
+import {
+  KeyRound,
+  Mail,
+  ShieldCheck,
+  RotateCcw,
+  Loader2,
+  ArrowLeft,
+} from "lucide-react";
+import { zodResolver } from "@hookform/resolvers/zod";
 import {
   ForgotPasswordSchema,
   forgotPasswordSchema,
@@ -14,80 +26,101 @@ import {
   resetPasswordSchema,
   VerifyOtpSchema,
   verifyOtpSchema,
-} from "@/lib/schemas/auth.schema"
-import { useForm } from "react-hook-form"
-import { useRouter } from "next/navigation"
+} from "@/lib/schemas/auth.schema";
+import { useForm } from "react-hook-form";
+import { useRouter } from "next/navigation";
+import { authClient } from "@/lib/auth-client";
 
-type Step = "request" | "verify" | "reset"
+type Step = "request" | "verify" | "reset";
 
 export default function Page() {
-  const [step, setStep] = useState<Step>("request")
-  const [email, setEmail] = useState("")
-  const router = useRouter()
+  const [step, setStep] = useState<Step>("request");
+  const [email, setEmail] = useState("");
+  const router = useRouter();
 
   const forgotPasswordForm = useForm<ForgotPasswordSchema>({
     resolver: zodResolver(forgotPasswordSchema),
     defaultValues: { email: "" },
-  })
+  });
 
   const onForgotPasswordSubmit = async (data: ForgotPasswordSchema) => {
-    try {
-      // TODO: call forgot password API with `data`
-      console.log(data)
-      setEmail(data.email)
-      setStep("verify")
-    } catch (error) {
-      console.error("Failed to send reset code:", error)
-      // Optionally display error to user
+    const result = await authClient.emailOtp.requestPasswordReset({
+      email: data.email,
+    });
+
+    if (result.error) {
+      forgotPasswordForm.setError("root.serverError", {
+        message:
+          result.error.message ?? "Something went wrong. Please try again.",
+      });
+      return;
     }
-  }
+
+    setEmail(data.email);
+    setStep("verify");
+  };
 
   const verifyOtpForm = useForm<VerifyOtpSchema>({
     resolver: zodResolver(verifyOtpSchema),
     defaultValues: { otp: "" },
-  })
+  });
 
   const onVerifyOtpSubmit = async (data: VerifyOtpSchema) => {
-    try {
-      // TODO: call verify OTP API with `data`
-      console.log(data)
-      setStep("reset")
-    } catch (error) {
-      console.error("Failed to verify OTP:", error)
-      // Optionally display error to user
+    const result = await authClient.emailOtp.checkVerificationOtp({
+      email,
+      otp: data.otp,
+      type: "forget-password",
+    });
+
+    if (result.error) {
+      verifyOtpForm.setError("root.serverError", {
+        message: result.error.message ?? "Invalid or expired code.",
+      });
+      return;
     }
-  }
+
+    setStep("reset");
+  };
 
   const resetPasswordForm = useForm<ResetPasswordSchema>({
     resolver: zodResolver(resetPasswordSchema),
     defaultValues: { newPassword: "", confirmPassword: "" },
-  })
+  });
 
   const onResetPasswordSubmit = async (data: ResetPasswordSchema) => {
-    try {
-      // TODO: call reset password API with `data`
-      console.log(data)
-      router.push("/login")
-    } catch (error) {
-      console.error("Failed to reset password:", error)
-      // Optionally display error to user
+    const result = await authClient.emailOtp.resetPassword({
+      email,
+      otp: verifyOtpForm.getValues("otp"),
+      password: data.newPassword,
+    });
+
+    if (result.error) {
+      resetPasswordForm.setError("root.serverError", {
+        message:
+          result.error.message ?? "Something went wrong. Please try again.",
+      });
+      return;
     }
 
-  }
+    router.push("/login");
+  };
 
   const onResendCode = async () => {
-    try {
-      // TODO: call resend code API
-      console.log("Resend code")
-    } catch (error) {
-      console.error("Failed to resend code:", error)
-      // Optionally display error to user
+    const result = await authClient.emailOtp.requestPasswordReset({ email });
+
+    if (result.error) {
+      verifyOtpForm.setError("root.serverError", {
+        message: result.error.message ?? "Failed to resend code.",
+      });
+      return;
     }
-  }
+
+    verifyOtpForm.reset({ otp: "" });
+  };
 
   const onBackToLogin = () => {
-    router.push("/login")
-  }
+    router.push("/login");
+  };
 
   const content =
     step === "request"
@@ -98,21 +131,30 @@ export default function Page() {
           icon: KeyRound,
         }
       : step === "verify"
-      ? {
-          title: "Enter verification code",
-          subtitle: `Enter the code sent to ${email}`,
-          icon: ShieldCheck,
-        }
-      : {
-          title: "Set a new password",
-          subtitle: email ? `Enter the code sent to ${email}` : "Enter the verification code sent to your email",
-          icon: ShieldCheck,
-        }
+        ? {
+            title: "Enter verification code",
+            subtitle: `Enter the code sent to ${email}`,
+            icon: ShieldCheck,
+          }
+        : {
+            title: "Set a new password",
+            subtitle: email
+              ? `Enter the code sent to ${email}`
+              : "Enter the verification code sent to your email",
+            icon: ShieldCheck,
+          };
 
   return (
-    <AuthShell title={content.title} subtitle={content.subtitle} icon={content.icon}>
+    <AuthShell
+      title={content.title}
+      subtitle={content.subtitle}
+      icon={content.icon}
+    >
       {step === "request" && (
-        <form className="grid gap-4" onSubmit={forgotPasswordForm.handleSubmit(onForgotPasswordSubmit)}>
+        <form
+          className="grid gap-4"
+          onSubmit={forgotPasswordForm.handleSubmit(onForgotPasswordSubmit)}
+        >
           <FormField label="Email">
             <IconInput
               type="email"
@@ -127,7 +169,12 @@ export default function Page() {
             </p>
           )}
 
-          <Button type="submit" variant="brand" size="form" disabled={forgotPasswordForm.formState.isSubmitting}>
+          <Button
+            type="submit"
+            variant="brand"
+            size="form"
+            disabled={forgotPasswordForm.formState.isSubmitting}
+          >
             {forgotPasswordForm.formState.isSubmitting ? (
               <Loader2 className="size-4 animate-spin" />
             ) : (
@@ -148,10 +195,15 @@ export default function Page() {
       )}
 
       {step === "verify" && (
-        <form className="grid gap-4" onSubmit={verifyOtpForm.handleSubmit(onVerifyOtpSubmit)}>
+        <form
+          className="grid gap-4"
+          onSubmit={verifyOtpForm.handleSubmit(onVerifyOtpSubmit)}
+        >
           <OtpInput
             value={verifyOtpForm.watch("otp")}
-            onChange={(val) => verifyOtpForm.setValue("otp", val, { shouldValidate: true })}
+            onChange={(val) =>
+              verifyOtpForm.setValue("otp", val, { shouldValidate: true })
+            }
           />
           {verifyOtpForm.formState.errors.otp && (
             <p className="text-sm text-(--color-coral-400) text-center">
@@ -169,7 +221,12 @@ export default function Page() {
             </button>
           </div>
 
-          <Button type="submit" variant="brand" size="form" disabled={verifyOtpForm.formState.isSubmitting}>
+          <Button
+            type="submit"
+            variant="brand"
+            size="form"
+            disabled={verifyOtpForm.formState.isSubmitting}
+          >
             {verifyOtpForm.formState.isSubmitting ? (
               <Loader2 className="size-4 animate-spin" />
             ) : (
@@ -191,9 +248,15 @@ export default function Page() {
       )}
 
       {step === "reset" && (
-        <form className="grid gap-4" onSubmit={resetPasswordForm.handleSubmit(onResetPasswordSubmit)}>
+        <form
+          className="grid gap-4"
+          onSubmit={resetPasswordForm.handleSubmit(onResetPasswordSubmit)}
+        >
           <FormField label="New password">
-            <PasswordInput placeholder="At least 8 characters" {...resetPasswordForm.register("newPassword")} />
+            <PasswordInput
+              placeholder="At least 8 characters"
+              {...resetPasswordForm.register("newPassword")}
+            />
           </FormField>
           {resetPasswordForm.formState.errors.newPassword && (
             <p className="text-sm text-(--color-coral-400)">
@@ -202,7 +265,10 @@ export default function Page() {
           )}
 
           <FormField label="Confirm password">
-            <PasswordInput placeholder="Re-enter password" {...resetPasswordForm.register("confirmPassword")} />
+            <PasswordInput
+              placeholder="Re-enter password"
+              {...resetPasswordForm.register("confirmPassword")}
+            />
           </FormField>
           {resetPasswordForm.formState.errors.confirmPassword && (
             <p className="text-sm text-(--color-coral-400)">
@@ -210,7 +276,12 @@ export default function Page() {
             </p>
           )}
 
-          <Button type="submit" variant="brand" size="form" disabled={resetPasswordForm.formState.isSubmitting}>
+          <Button
+            type="submit"
+            variant="brand"
+            size="form"
+            disabled={resetPasswordForm.formState.isSubmitting}
+          >
             {resetPasswordForm.formState.isSubmitting ? (
               <Loader2 className="size-4 animate-spin" />
             ) : (
@@ -230,5 +301,5 @@ export default function Page() {
         </form>
       )}
     </AuthShell>
-  )
+  );
 }
