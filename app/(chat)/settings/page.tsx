@@ -1,4 +1,4 @@
-"use client"
+"use client";
 
 import ProfileForm from "@/components/settings/ProfileForm";
 import PasswordForm from "@/components/settings/PasswordForm";
