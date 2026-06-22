@@ -1,6 +1,6 @@
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
-import {prisma} from "@/lib/prisma";
+import prisma from "@/lib/prisma";
 import { username } from "better-auth/plugins";
 
 const baseURL = process.env.NEXT_PUBLIC_APP_URL;
