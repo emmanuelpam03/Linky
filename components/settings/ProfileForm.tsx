@@ -1,6 +1,6 @@
 "use client";
 
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
@@ -9,21 +9,21 @@ import { Loader2, Upload } from "lucide-react";
 import { authClient, useSession } from "@/lib/auth-client";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { User } from "@/types/auth";
-
-const profileSchema = z.object({
-  fullName: z.string().min(1, "Full name is required"),
-  username: z.string().min(1, "Username is required"),
-  bio: z.string().optional(),
-});
-
-type ProfileSchema = z.infer<typeof profileSchema>;
+import { profileSchema, ProfileSchema } from "@/lib/schemas/auth.schema";
+import { uploadAvatar } from "@/app/actions/upload/avatar";
 
 const ProfileForm = () => {
   const { data: session } = useSession();
   const user = session?.user as User | undefined;
+
+  const [isSuccess, setIsSuccess] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const avatarUrl = user?.image ?? null;
 
   const form = useForm<ProfileSchema>({
     resolver: zodResolver(profileSchema),
@@ -44,7 +44,26 @@ const ProfileForm = () => {
     }
   }, [user, form]);
 
-  const [isSuccess, setIsSuccess] = useState(false);
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadError(null);
+    setIsUploading(true);
+
+    const formData = new FormData();
+    formData.append("avatar", file);
+
+    const result = await uploadAvatar(formData);
+
+    if (!result.success) {
+      setUploadError(result.error ?? "Upload failed.");
+      setIsUploading(false);
+      return;
+    }
+
+    setIsUploading(false);
+  };
 
   const onSubmit = async (data: ProfileSchema) => {
     setIsSuccess(false);
@@ -89,19 +108,46 @@ const ProfileForm = () => {
           className="shrink-0"
           style={{ width: 96, height: 96 }}
         >
+          {avatarUrl && (
+            <AvatarImage src={avatarUrl} alt={user?.name ?? "Avatar"} />
+          )}
           <AvatarFallback className="bg-(--color-brand-50) text-2xl font-semibold text-(--color-brand-900)">
             {initials}
           </AvatarFallback>
         </Avatar>
 
         <div className="pt-2">
-          <Button variant="brand" size="sm" className="gap-2 rounded-lg">
-            <Upload className="size-4" />
-            Upload photo
+          {/* Hidden file input */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            className="hidden"
+            onChange={handleAvatarChange}
+          />
+          <Button
+            type="button"
+            variant="brand"
+            size="sm"
+            className="gap-2 rounded-lg"
+            disabled={isUploading}
+            onClick={() => fileInputRef.current?.click()}
+          >
+            {isUploading ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : (
+              <Upload className="size-4" />
+            )}
+            {isUploading ? "Uploading..." : "Upload photo"}
           </Button>
           <p className="mt-2 text-sm text-(--color-text-secondary)">
-            JPG or PNG, max 2MB
+            JPG, PNG or WebP, max 2MB
           </p>
+          {uploadError && (
+            <p className="mt-1 text-sm text-(--color-coral-400)">
+              {uploadError}
+            </p>
+          )}
         </div>
       </div>
 

@@ -10,23 +10,8 @@ import { authClient, useSession } from "@/lib/auth-client";
 import Link from "next/link";
 import { sendPasswordChangeNotification } from "@/app/actions/auth/notify";
 import { useState } from "react";
+import { passwordSchema, PasswordSchema } from "@/lib/schemas/auth.schema";
 
-const passwordSchema = z
-  .object({
-    currentPassword: z.string().min(1, "Current password is required"),
-    newPassword: z.string().min(8, "Password must be at least 8 characters"),
-    confirmPassword: z.string().min(1, "Please confirm your new password"),
-  })
-  .refine((data) => data.newPassword === data.confirmPassword, {
-    message: "Passwords do not match",
-    path: ["confirmPassword"],
-  })
-  .refine((data) => data.currentPassword !== data.newPassword, {
-    message: "New password must be different from your current password",
-    path: ["newPassword"],
-  });
-
-type PasswordSchema = z.infer<typeof passwordSchema>;
 
 const PasswordForm = () => {
   const { data: session } = useSession();
