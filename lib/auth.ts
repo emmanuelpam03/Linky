@@ -67,6 +67,17 @@ export const auth = betterAuth({
     }),
   ],
 
+  user: {
+    additionalFields: {
+      bio: {
+        type: "string",
+        required: false,
+        defaultValue: "",
+        input: true,
+      },
+    },
+  },
+
   baseURL,
   // trustedOrigins: ["http://localhost:3001"],
 });

@@ -3,18 +3,24 @@
 import ProfileForm from "@/components/settings/ProfileForm";
 import PasswordForm from "@/components/settings/PasswordForm";
 import { Button } from "@/components/ui/button";
-import { LogOut } from "lucide-react";
+import { Loader2, LogOut } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { authClient } from "@/lib/auth-client";
+import { useState } from "react";
 
 const Page = () => {
   const router = useRouter();
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const handleLogout = async () => {
+    setIsLoggingOut(true);
     await authClient.signOut({
       fetchOptions: {
         onSuccess: () => {
           router.push("/login");
+        },
+        onError: () => {
+          setIsLoggingOut(false);
         },
       },
     });
@@ -50,12 +56,17 @@ const Page = () => {
 
               <Button
                 onClick={handleLogout}
+                disabled={isLoggingOut}
                 variant="outline"
                 size="form"
                 className="border-(--color-coral-400) bg-transparent px-5 text-(--color-coral-600) hover:bg-(--color-coral-100) hover:text-(--color-coral-800)"
               >
-                <LogOut className="size-4" />
-                Log out
+                {isLoggingOut ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <LogOut className="size-4" />
+                )}
+                {isLoggingOut ? "Logging out..." : "Log out"}
               </Button>
             </div>
           </section>
