@@ -36,14 +36,14 @@ export async function uploadAvatar(formData: FormData) {
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
     console.log("BUFFER SIZE:", buffer.length);
-    
+
     // Upload to Cloudinary
     const result = await new Promise<{ secure_url: string }>(
       (resolve, reject) => {
         cloudinary.uploader
           .upload_stream(
             {
-              folder: "converse/avatars",
+              folder: "linky/avatars",
               public_id: `avatar_${session.user.id}`,
               overwrite: true,
               transformation: [

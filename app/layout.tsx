@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Converse",
+  title: "Linky",
   description: "Chat with friends and groups, instantly.",
 };
 
@@ -32,7 +32,7 @@ export default function RootLayout({
         "antialiased",
         geistSans.variable,
         geistMono.variable,
-        "font-sans"
+        "font-sans",
       )}
     >
       <body className="min-h-full flex flex-col bg-(--color-background-secondary) text-(--color-text-primary)">

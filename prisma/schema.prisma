@@ -126,14 +126,21 @@ model Conversation {
   name      String?
   image     String?
   createdBy String
-  createdAt DateTime         @default(now())
-  updatedAt DateTime         @updatedAt
 
-  creator   User              @relation("CreatedConversations", fields: [createdBy], references: [id], onDelete: Cascade)
+  lastMessageId String?
+  lastMessageAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  creator   User @relation("CreatedConversations", fields: [createdBy], references: [id], onDelete: Cascade)
+
   members   ConversationMember[]
-  messages  Message[]
+
+  messages  Message[] @relation("ConversationMessages")
 
   @@index([createdBy])
+  @@index([lastMessageAt])
   @@map("conversation")
 }
 
@@ -167,16 +174,17 @@ model Message {
   id             String   @id @default(cuid())
   conversationId String
   senderId       String
-  text           String?  // optional — message may have no text
-  imageUrl       String?  // optional — image attachment
-  fileUrl        String?  // optional — file attachment
-  fileName       String?  // original file name for display
-  fileSize       Int?     // file size in bytes
+  text           String?
+  imageUrl       String?
+  fileUrl        String?
+  fileName       String?
+  fileSize       Int?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  sender       User         @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
+  conversation Conversation @relation("ConversationMessages", fields: [conversationId], references: [id], onDelete: Cascade)
+
+  sender       User @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
 
   @@index([conversationId])
   @@index([senderId])

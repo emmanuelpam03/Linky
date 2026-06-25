@@ -19,3 +19,27 @@ export type Group = {
   timestamp: string;
   icon: GroupIcon;
 };
+
+// ── Friend system types ──
+
+export type UserResult = {
+  id: string;
+  name: string;
+  username: string;
+  image: string | null;
+};
+
+export type FriendRequest = {
+  id: string;
+  status: "PENDING" | "ACCEPTED" | "REJECTED";
+  createdAt: Date;
+  sender: UserResult;
+  receiver: UserResult;
+};
+
+export type Friend = {
+  id: string;
+  name: string;
+  username: string;
+  image: string | null;
+};
