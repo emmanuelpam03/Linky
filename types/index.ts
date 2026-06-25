@@ -151,3 +151,38 @@ export type ConversationWithMembers = {
   image: string | null;
   members: MemberWithUser[];
 };
+
+export type MessageWithSender = {
+  id: string;
+  text: string | null;
+  imageUrl: string | null;
+  fileUrl: string | null;
+  fileName: string | null;
+  fileSize: number | null;
+  createdAt: Date;
+  senderId: string;
+  sender: {
+    id: string;
+    name: string;
+    username: string;
+    image: string | null;
+  };
+};
+
+export type MessageItem = {
+  id: string;
+  text: string | null;
+  imageUrl: string | null;
+  fileUrl: string | null;
+  fileName: string | null;
+  fileSize: number | null;
+  createdAt: Date;
+  senderId: string;
+  sender: {
+    id: string;
+    name: string;
+    username: string;
+    image: string | null;
+  };
+  isOwn: boolean;
+};

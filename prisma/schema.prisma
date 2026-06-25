@@ -126,6 +126,7 @@ model Conversation {
   name      String?
   image     String?
   createdBy String
+  pairKey   String?          @unique // sorted userId pair for DIRECT chats
 
   lastMessageId String?
   lastMessageAt DateTime?
@@ -133,11 +134,9 @@ model Conversation {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  creator   User @relation("CreatedConversations", fields: [createdBy], references: [id], onDelete: Cascade)
-
-  members   ConversationMember[]
-
-  messages  Message[] @relation("ConversationMessages")
+  creator  User                 @relation("CreatedConversations", fields: [createdBy], references: [id], onDelete: Cascade)
+  members  ConversationMember[]
+  messages Message[]            @relation("ConversationMessages")
 
   @@index([createdBy])
   @@index([lastMessageAt])

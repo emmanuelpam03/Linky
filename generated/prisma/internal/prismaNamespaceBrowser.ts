@@ -167,6 +167,7 @@ export const ConversationScalarFieldEnum = {
   name: 'name',
   image: 'image',
   createdBy: 'createdBy',
+  pairKey: 'pairKey',
   lastMessageId: 'lastMessageId',
   lastMessageAt: 'lastMessageAt',
   createdAt: 'createdAt',
