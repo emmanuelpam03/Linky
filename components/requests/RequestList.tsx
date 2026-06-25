@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Avatar, AvatarFallback, AvatarBadge } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -24,85 +24,142 @@ const RequestList = () => {
   const [incoming, setIncoming] = useState<FriendRequest[]>([]);
   const [sent, setSent] = useState<FriendRequest[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [actionLoading, setActionLoading] = useState<Record<string, boolean>>(
-    {},
-  );
+
+  const [actionLoading, setActionLoading] = useState<
+    Record<string, "accept" | "reject" | "cancel" | undefined>
+  >({});
+
   const [actionErrors, setActionErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
     const load = async () => {
       setIsLoading(true);
-      const [incomingResult, sentResult] = await Promise.all([
-        getIncomingRequests(),
-        getSentRequests(),
-      ]);
-      if (incomingResult.success) setIncoming(incomingResult.data);
-      if (sentResult.success) setSent(sentResult.data);
-      setIsLoading(false);
+
+      try {
+        const [incomingResult, sentResult] = await Promise.all([
+          getIncomingRequests(),
+          getSentRequests(),
+        ]);
+
+        if (incomingResult.success) {
+          setIncoming(incomingResult.data);
+        }
+
+        if (sentResult.success) {
+          setSent(sentResult.data);
+        }
+      } finally {
+        setIsLoading(false);
+      }
     };
+
     load();
   }, []);
 
   const handleAccept = async (requestId: string) => {
-    setActionLoading((prev) => ({ ...prev, [requestId]: true }));
-    setActionErrors((prev) => ({ ...prev, [requestId]: "" }));
+    setActionLoading((prev) => ({
+      ...prev,
+      [requestId]: "accept",
+    }));
 
-    const result = await acceptFriendRequest(requestId);
+    setActionErrors((prev) => ({
+      ...prev,
+      [requestId]: "",
+    }));
 
-    if (!result.success) {
-      setActionErrors((prev) => ({
+    try {
+      const result = await acceptFriendRequest(requestId);
+
+      if (!result.success) {
+        setActionErrors((prev) => ({
+          ...prev,
+          [requestId]: result.error ?? "Failed to accept",
+        }));
+        return;
+      }
+
+      setIncoming((prev) => prev.filter((r) => r.id !== requestId));
+    } finally {
+      setActionLoading((prev) => ({
         ...prev,
-        [requestId]: result.error ?? "Failed to accept",
+        [requestId]: undefined,
       }));
-      setActionLoading((prev) => ({ ...prev, [requestId]: false }));
-      return;
     }
-
-    setIncoming((prev) => prev.filter((r) => r.id !== requestId));
-    setActionLoading((prev) => ({ ...prev, [requestId]: false }));
   };
 
   const handleReject = async (requestId: string) => {
-    setActionLoading((prev) => ({ ...prev, [requestId]: true }));
-    setActionErrors((prev) => ({ ...prev, [requestId]: "" }));
+    setActionLoading((prev) => ({
+      ...prev,
+      [requestId]: "reject",
+    }));
 
-    const result = await rejectFriendRequest(requestId);
+    setActionErrors((prev) => ({
+      ...prev,
+      [requestId]: "",
+    }));
 
-    if (!result.success) {
-      setActionErrors((prev) => ({
+    try {
+      const result = await rejectFriendRequest(requestId);
+
+      if (!result.success) {
+        setActionErrors((prev) => ({
+          ...prev,
+          [requestId]: result.error ?? "Failed to reject",
+        }));
+        return;
+      }
+
+      setIncoming((prev) => prev.filter((r) => r.id !== requestId));
+    } finally {
+      setActionLoading((prev) => ({
         ...prev,
-        [requestId]: result.error ?? "Failed to reject",
+        [requestId]: undefined,
       }));
-      setActionLoading((prev) => ({ ...prev, [requestId]: false }));
-      return;
     }
-
-    setIncoming((prev) => prev.filter((r) => r.id !== requestId));
-    setActionLoading((prev) => ({ ...prev, [requestId]: false }));
   };
 
   const handleCancel = async (requestId: string) => {
-    setActionLoading((prev) => ({ ...prev, [requestId]: true }));
-    setActionErrors((prev) => ({ ...prev, [requestId]: "" }));
+    setActionLoading((prev) => ({
+      ...prev,
+      [requestId]: "cancel",
+    }));
 
-    const result = await cancelFriendRequest(requestId);
+    setActionErrors((prev) => ({
+      ...prev,
+      [requestId]: "",
+    }));
 
-    if (!result.success) {
-      setActionErrors((prev) => ({
+    try {
+      const result = await cancelFriendRequest(requestId);
+
+      if (!result.success) {
+        setActionErrors((prev) => ({
+          ...prev,
+          [requestId]: result.error ?? "Failed to cancel",
+        }));
+        return;
+      }
+
+      setSent((prev) => prev.filter((r) => r.id !== requestId));
+    } finally {
+      setActionLoading((prev) => ({
         ...prev,
-        [requestId]: result.error ?? "Failed to cancel",
+        [requestId]: undefined,
       }));
-      setActionLoading((prev) => ({ ...prev, [requestId]: false }));
-      return;
     }
-
-    setSent((prev) => prev.filter((r) => r.id !== requestId));
-    setActionLoading((prev) => ({ ...prev, [requestId]: false }));
   };
 
   const tabs = [
-    { id: "incoming" as Tab, label: "Incoming", count: incoming.length },
-    { id: "sent" as Tab, label: "Sent", count: sent.length },
+    {
+      id: "incoming" as Tab,
+      label: "Incoming",
+      count: incoming.length,
+    },
+    {
+      id: "sent" as Tab,
+      label: "Sent",
+      count: sent.length,
+    },
   ];
 
   const requests = activeTab === "incoming" ? incoming : sent;
@@ -115,6 +172,7 @@ const RequestList = () => {
             <h1 className="text-lg font-semibold text-(--color-text-primary)">
               Friend requests
             </h1>
+
             <p className="mt-1 text-sm text-(--color-text-secondary)">
               Review incoming requests or check what you have already sent
             </p>
@@ -131,6 +189,7 @@ const RequestList = () => {
         <div className="mt-4 flex items-center gap-6 border-b border-(--color-border-tertiary)">
           {tabs.map((tab) => {
             const active = activeTab === tab.id;
+
             return (
               <button
                 key={tab.id}
@@ -144,6 +203,7 @@ const RequestList = () => {
                 )}
               >
                 {tab.label}
+
                 <span
                   className={cn(
                     "inline-flex min-w-5 items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] font-semibold",
@@ -178,7 +238,9 @@ const RequestList = () => {
             {requests.map((request, index) => {
               const person =
                 activeTab === "incoming" ? request.sender : request.receiver;
-              const isActionLoading = actionLoading[request.id];
+
+              const loadingAction = actionLoading[request.id];
+              const isActionLoading = Boolean(loadingAction);
               const error = actionErrors[request.id];
 
               const initials = person.name
@@ -193,15 +255,16 @@ const RequestList = () => {
                 <div
                   key={request.id}
                   className={cn(
-                    "flex items-center justify-between gap-4 px-5 py-4 border-b border-(--color-border-tertiary)",
+                    "flex items-center justify-between gap-4 border-b border-(--color-border-tertiary) px-5 py-4",
                     index === requests.length - 1 && "border-b-0",
                   )}
                 >
-                  <div className="flex items-center gap-4 min-w-0">
+                  <div className="flex min-w-0 items-center gap-4">
                     <Avatar size="lg">
-                      <AvatarFallback className="bg-(--color-brand-50) text-(--color-brand-900) text-sm font-medium">
+                      <AvatarFallback className="bg-(--color-brand-50) text-sm font-medium text-(--color-brand-900)">
                         {initials}
                       </AvatarFallback>
+
                       {activeTab === "incoming" && (
                         <AvatarBadge className="bg-(--color-brand-400) ring-(--color-background-primary)" />
                       )}
@@ -211,11 +274,13 @@ const RequestList = () => {
                       <div className="text-sm font-semibold text-(--color-text-primary)">
                         {person.name}
                       </div>
+
                       <div className="text-xs text-(--color-text-secondary)">
                         @{person.username}
                       </div>
+
                       {error && (
-                        <p className="text-xs text-(--color-coral-400) mt-0.5">
+                        <p className="mt-0.5 text-xs text-(--color-coral-400)">
                           {error}
                         </p>
                       )}
@@ -223,7 +288,7 @@ const RequestList = () => {
                   </div>
 
                   {activeTab === "incoming" ? (
-                    <div className="flex items-center gap-3 shrink-0">
+                    <div className="flex shrink-0 items-center gap-3">
                       <Button
                         variant="brand"
                         size="sm"
@@ -231,13 +296,14 @@ const RequestList = () => {
                         disabled={isActionLoading}
                         onClick={() => handleAccept(request.id)}
                       >
-                        {isActionLoading ? (
+                        {loadingAction === "accept" ? (
                           <Loader2 className="size-4 animate-spin" />
                         ) : (
                           <Check className="size-4" />
                         )}
                         Accept
                       </Button>
+
                       <Button
                         variant="outline"
                         size="sm"
@@ -246,17 +312,22 @@ const RequestList = () => {
                         onClick={() => handleReject(request.id)}
                         aria-label={`Decline ${person.name}`}
                       >
-                        <X className="size-4" />
+                        {loadingAction === "reject" ? (
+                          <Loader2 className="size-4 animate-spin" />
+                        ) : (
+                          <X className="size-4" />
+                        )}
                       </Button>
                     </div>
                   ) : (
-                    <div className="flex items-center gap-3 shrink-0">
+                    <div className="flex shrink-0 items-center gap-3">
                       <Badge
                         variant="outline"
                         className="border-(--color-border-tertiary) bg-(--color-background-secondary) text-(--color-text-secondary)"
                       >
                         Pending
                       </Badge>
+
                       <Button
                         variant="outline"
                         size="sm"
@@ -265,7 +336,7 @@ const RequestList = () => {
                         onClick={() => handleCancel(request.id)}
                         aria-label={`Cancel request to ${person.name}`}
                       >
-                        {isActionLoading ? (
+                        {loadingAction === "cancel" ? (
                           <Loader2 className="size-4 animate-spin" />
                         ) : (
                           <X className="size-4" />
