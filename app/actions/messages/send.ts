@@ -2,6 +2,7 @@
 
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth-session";
+import { MessageItem } from "@/types";
 
 export async function sendMessage({
   conversationId,
@@ -23,11 +24,14 @@ export async function sendMessage({
   if (!membership)
     return { success: false, error: "Not a member of this conversation" };
 
+  const trimmed = text.trim();
+  if (!trimmed) return { success: false, error: "Message cannot be empty" };
+
   const message = await prisma.message.create({
     data: {
       conversationId,
       senderId: userId,
-      text: text.trim(),
+      text: trimmed,
     },
     select: {
       id: true,
@@ -36,6 +40,8 @@ export async function sendMessage({
       fileUrl: true,
       fileName: true,
       fileSize: true,
+      deletedFor: true,
+      deletedForEveryone: true,
       createdAt: true,
       senderId: true,
       sender: {
@@ -52,8 +58,16 @@ export async function sendMessage({
   // Update conversation's lastMessageAt
   await prisma.conversation.update({
     where: { id: conversationId },
-    data: { lastMessageAt: message.createdAt },
+    data: { lastMessageId: message.id, lastMessageAt: message.createdAt },
   });
 
-  return { success: true, data: message };
+  return {
+    success: true,
+    data: {
+      ...message,
+      isOwn: true,
+      deletedForEveryone: false,
+      deletedForSelf: false,
+    } as MessageItem,
+  };
 }

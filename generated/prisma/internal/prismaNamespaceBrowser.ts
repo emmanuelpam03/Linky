@@ -197,6 +197,8 @@ export const MessageScalarFieldEnum = {
   fileUrl: 'fileUrl',
   fileName: 'fileName',
   fileSize: 'fileSize',
+  deletedFor: 'deletedFor',
+  deletedForEveryone: 'deletedForEveryone',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const

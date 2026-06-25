@@ -24,13 +24,20 @@ const MessageComposer = ({
     setIsSending(true);
     setText("");
 
-    const result = await sendMessage({ conversationId, text: trimmed });
-
-    if (result.success && result.data) {
-      onMessageSent(result.data as MessageItem);
+    try {
+      const result = await sendMessage({ conversationId, text: trimmed });
+      if (result.success && result.data) {
+        onMessageSent(result.data as MessageItem);
+      } else {
+        setText(trimmed); // restore on failure
+        // TODO: surface an error to the user
+      }
+    } catch {
+      setText(trimmed);
+      // TODO: surface an error to the user
+    } finally {
+      setIsSending(false);
     }
-
-    setIsSending(false);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {

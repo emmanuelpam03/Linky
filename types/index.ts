@@ -161,6 +161,8 @@ export type MessageWithSender = {
   fileSize: number | null;
   createdAt: Date;
   senderId: string;
+  deletedFor: string[];
+  deletedForEveryone: boolean;
   sender: {
     id: string;
     name: string;
@@ -185,4 +187,6 @@ export type MessageItem = {
     image: string | null;
   };
   isOwn: boolean;
+  deletedForEveryone: boolean;
+  deletedForSelf: boolean; // true if current user deleted it for themselves
 };
