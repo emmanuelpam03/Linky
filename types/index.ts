@@ -43,3 +43,46 @@ export type Friend = {
   username: string;
   image: string | null;
 };
+
+export type FriendRequestWithSender = {
+  id: string;
+  senderId: string;
+  receiverId: string;
+  status: "PENDING" | "ACCEPTED" | "REJECTED";
+  createdAt: Date;
+  updatedAt: Date;
+  sender: {
+    id: string;
+    name: string;
+    username: string;
+    image: string | null;
+  };
+};
+
+export type FriendRequestWithReceiver = {
+  id: string;
+  senderId: string;
+  receiverId: string;
+  status: "PENDING" | "ACCEPTED" | "REJECTED";
+  createdAt: Date;
+  updatedAt: Date;
+  receiver: {
+    id: string;
+    name: string;
+    username: string;
+    image: string | null;
+  };
+};
+
+export type FriendshipWithFriend = {
+  id: string;
+  createdAt: Date;
+  userId: string;
+  friendId: string;
+  friend: {
+    id: string;
+    name: string;
+    username: string;
+    image: string | null;
+  };
+};

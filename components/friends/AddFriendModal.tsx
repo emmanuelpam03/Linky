@@ -36,6 +36,7 @@ const AddFriendModal = ({ onClose }: AddFriendModalProps) => {
 
   // Search on debounced query change
   useEffect(() => {
+    let active = true;
     const search = async () => {
       if (!debouncedQuery.trim()) {
         setResults([]);
@@ -46,9 +47,15 @@ const AddFriendModal = ({ onClose }: AddFriendModalProps) => {
       const result = await searchUsers(debouncedQuery);
       if (result.success) setResults(result.data);
       setIsSearching(false);
+      if (!active) return;
+      if (result.success) setResults(result.data);
+      setIsSearching(false);
     };
 
     search();
+    return () => {
+      active = false;
+    };
   }, [debouncedQuery]);
 
   const handleSendRequest = async (userId: string) => {
@@ -87,6 +94,9 @@ const AddFriendModal = ({ onClose }: AddFriendModalProps) => {
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4"
       onClick={handleBackdropClick}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Add friend"
     >
       <div className="w-full max-w-md rounded-2xl bg-(--color-background-primary) border border-(--color-border-tertiary) shadow-xl">
         {/* Header */}
@@ -101,6 +111,7 @@ const AddFriendModal = ({ onClose }: AddFriendModalProps) => {
           </div>
           <button
             onClick={onClose}
+            aria-label="Close"
             className="rounded-lg p-1.5 text-(--color-text-tertiary) hover:bg-(--color-background-secondary) transition-colors"
           >
             <X className="size-4" />
