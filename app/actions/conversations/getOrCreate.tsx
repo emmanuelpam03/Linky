@@ -10,6 +10,13 @@ export async function getOrCreateDirectConversation(friendId: string) {
 
   const userId = session.user.id;
 
+  if (friendId === userId)
+    return {
+      success: false,
+      error: "Cannot start a conversation with yourself",
+      conversationId: null,
+    };
+
   // Check if a direct conversation already exists between both users
   const existing = await prisma.conversation.findFirst({
     where: {

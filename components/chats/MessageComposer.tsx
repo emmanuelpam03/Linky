@@ -7,9 +7,10 @@ type MessageComposerProps = {
 const MessageComposer = ({ conversationId: _ }: MessageComposerProps) => {
   return (
     <div className="border-t border-(--color-border-tertiary) px-4 py-3">
-      <div className="flex items-center gap-2 rounded-xl border border-(--color-border-secondary) px-4 py-2 bg-(--color-background-primary)">
+      <div className="flex items-center gap-2 rounded-xl border border-(--color-border-secondary) bg-(--color-background-primary) px-4 py-2 focus-within:ring-2 focus-within:ring-(--color-brand-400)">
         <input
           type="text"
+          aria-label="Message"
           placeholder="Type a message..."
           className="flex-1 bg-transparent text-sm text-(--color-text-primary) placeholder:text-(--color-text-tertiary) focus:outline-none"
         />

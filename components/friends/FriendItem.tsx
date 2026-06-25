@@ -27,11 +27,16 @@ const FriendItem = ({ friend }: FriendItemProps) => {
 
   const handleMessage = async () => {
     setIsLoading(true);
-    const result = await getOrCreateDirectConversation(id);
-    if (result.success && result.conversationId) {
-      router.push(`/chats/${result.conversationId}`);
+    try {
+      const result = await getOrCreateDirectConversation(id);
+      if (result.success && result.conversationId) {
+        router.push(`/chats/${result.conversationId}`);
+      } else {
+        // TODO: surface error to the user (toast/inline message)
+      }
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   };
 
   return (

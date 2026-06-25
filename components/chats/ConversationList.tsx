@@ -13,11 +13,13 @@ export default function ConversationList() {
     [],
   );
   const [isLoading, setIsLoading] = useState(true);
+  const [hasError, setHasError] = useState(false);
 
   useEffect(() => {
     const load = async () => {
       const result = await getConversations();
       if (result.success) setConversations(result.data);
+      else setHasError(true);
       setIsLoading(false);
     };
     load();
