@@ -83,7 +83,7 @@ export async function getMessages(
       sender: m.sender,
       isOwn: m.senderId === userId,
       deletedForEveryone: m.deletedForEveryone,
-      deletedForSelf: m.deletedFor.includes(userId),
+      deletedForSelf: m.deletedFor?.includes(userId) ?? false,
     })),
   };
 }

@@ -22,6 +22,23 @@ export async function getOrCreateDirectConversation(friendId: string) {
       conversationId: null,
     };
 
+  // Verify the two users are friends
+  const areFriends = await prisma.friend.findFirst({
+    where: {
+      OR: [
+        { userId, friendId },
+        { userId: friendId, friendId: userId },
+      ],
+    },
+  });
+
+  if (!areFriends)
+    return {
+      success: false,
+      error: "You must be friends to start a conversation",
+      conversationId: null,
+    };
+
   const pairKey = buildPairKey(userId, friendId);
 
   try {
