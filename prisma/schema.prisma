@@ -21,6 +21,15 @@ model User {
   accounts        Account[]
   sessions        Session[]
 
+  // Friend relations
+  sentRequests         FriendRequest[]      @relation("SentRequests")
+  receivedRequests     FriendRequest[]      @relation("ReceivedRequests")
+  friendsAsUser        Friend[]             @relation("FriendsAsUser")
+  friendsAsFriend      Friend[]             @relation("FriendsAsFriend")
+  createdConversations Conversation[]       @relation("CreatedConversations")
+  conversationMembers  ConversationMember[]
+  sentMessages         Message[]            @relation("SentMessages")
+
   @@map("user")
 }
 
@@ -69,4 +78,107 @@ model Verification {
 
   @@index([identifier])
   @@map("verification")
+}
+
+model FriendRequest {
+  id         String              @id @default(cuid())
+  senderId   String
+  receiverId String
+  status     FriendRequestStatus @default(PENDING)
+  createdAt  DateTime            @default(now())
+  updatedAt  DateTime            @updatedAt
+
+  sender     User                @relation("SentRequests", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver   User                @relation("ReceivedRequests", fields: [receiverId], references: [id], onDelete: Cascade)
+
+  // Prevent duplicate requests between same two users
+  @@unique([senderId, receiverId])
+  @@index([senderId])
+  @@index([receiverId])
+  @@map("friend_request")
+}
+
+enum FriendRequestStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+}
+
+model Friend {
+  id        String   @id @default(cuid())
+  userId    String
+  friendId  String
+  createdAt DateTime @default(now())
+
+  user      User     @relation("FriendsAsUser", fields: [userId], references: [id], onDelete: Cascade)
+  friend    User     @relation("FriendsAsFriend", fields: [friendId], references: [id], onDelete: Cascade)
+
+  // Prevent duplicate friendships
+  @@unique([userId, friendId])
+  @@index([userId])
+  @@index([friendId])
+  @@map("friend")
+}
+
+model Conversation {
+  id        String           @id @default(cuid())
+  type      ConversationType @default(DIRECT)
+  name      String?
+  image     String?
+  createdBy String
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  creator   User              @relation("CreatedConversations", fields: [createdBy], references: [id], onDelete: Cascade)
+  members   ConversationMember[]
+  messages  Message[]
+
+  @@index([createdBy])
+  @@map("conversation")
+}
+
+enum ConversationType {
+  DIRECT
+  GROUP
+}
+
+model ConversationMember {
+  id             String       @id @default(cuid())
+  conversationId String
+  userId         String
+  role           MemberRole   @default(MEMBER)
+  joinedAt       DateTime     @default(now())
+
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([conversationId, userId])
+  @@index([conversationId])
+  @@index([userId])
+  @@map("conversation_member")
+}
+
+enum MemberRole {
+  ADMIN
+  MEMBER
+}
+
+model Message {
+  id             String   @id @default(cuid())
+  conversationId String
+  senderId       String
+  text           String?  // optional — message may have no text
+  imageUrl       String?  // optional — image attachment
+  fileUrl        String?  // optional — file attachment
+  fileName       String?  // original file name for display
+  fileSize       Int?     // file size in bytes
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender       User         @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId])
+  @@index([senderId])
+  @@map("message")
 }
