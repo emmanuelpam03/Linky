@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import ChatWindow from "@/components/chats/ChatWindow";
-import { getConversationById } from "@/lib/mock-conversations";
+import { getConversation } from "@/app/actions/conversations/get";
 
 type PageProps = {
   params: Promise<{ conversationId: string }>;
@@ -8,11 +8,11 @@ type PageProps = {
 
 export default async function ConversationPage({ params }: PageProps) {
   const { conversationId } = await params;
-  const conversation = getConversationById(conversationId);
+  const result = await getConversation(conversationId);
 
-  if (!conversation) {
+  if (!result.success || !result.data) {
     notFound();
   }
 
-  return <ChatWindow conversation={conversation} />;
+  return <ChatWindow conversation={result.data} />;
 }

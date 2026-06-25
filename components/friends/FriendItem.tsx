@@ -1,19 +1,21 @@
 "use client";
 
-import React from "react";
-import Link from "next/link";
+import React, { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Avatar, AvatarFallback, AvatarBadge } from "@/components/ui/avatar";
-import { buttonVariants } from "@/components/ui/button";
-import { MessageSquare } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Loader2, MessageSquare } from "lucide-react";
 import type { Friend } from "@/types";
-import { cn } from "@/lib/utils";
+import { getOrCreateDirectConversation } from "@/app/actions/conversations/getOrCreate";
 
 type FriendItemProps = {
   friend: Friend;
 };
 
 const FriendItem = ({ friend }: FriendItemProps) => {
-  const { id, name, username, image } = friend;
+  const { id, name, username } = friend;
+  const [isLoading, setIsLoading] = useState(false);
+  const router = useRouter();
 
   const initials = name
     .split(" ")
@@ -22,6 +24,15 @@ const FriendItem = ({ friend }: FriendItemProps) => {
     .slice(0, 2)
     .join("")
     .toUpperCase();
+
+  const handleMessage = async () => {
+    setIsLoading(true);
+    const result = await getOrCreateDirectConversation(id);
+    if (result.success && result.conversationId) {
+      router.push(`/chats/${result.conversationId}`);
+    }
+    setIsLoading(false);
+  };
 
   return (
     <div className="flex items-center justify-between gap-4 px-4 py-4 transition-colors hover:bg-(--color-background-secondary)">
@@ -43,16 +54,20 @@ const FriendItem = ({ friend }: FriendItemProps) => {
         </div>
       </div>
 
-      <Link
-        href={`/chats/${id}`}
-        className={cn(
-          buttonVariants({ variant: "outline", size: "sm" }),
-          "gap-2 rounded-lg border-(--color-border-tertiary) bg-(--color-background-primary) text-(--color-text-primary) hover:bg-(--color-background-secondary)",
-        )}
+      <Button
+        variant="outline"
+        size="sm"
+        className="gap-2 rounded-lg border-(--color-border-tertiary) bg-(--color-background-primary) text-(--color-text-primary) hover:bg-(--color-background-secondary)"
+        disabled={isLoading}
+        onClick={handleMessage}
       >
-        <MessageSquare className="size-4" />
+        {isLoading ? (
+          <Loader2 className="size-4 animate-spin" />
+        ) : (
+          <MessageSquare className="size-4" />
+        )}
         Message
-      </Link>
+      </Button>
     </div>
   );
 };

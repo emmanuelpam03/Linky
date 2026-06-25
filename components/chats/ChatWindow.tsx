@@ -1,12 +1,12 @@
 "use client";
 
 import { MessageCircle, Users } from "lucide-react";
-import { Avatar, AvatarBadge, AvatarFallback } from "@/components/ui/avatar";
-import { cn } from "@/lib/utils";
-import type { Conversation } from "@/types";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import MessageComposer from "./MessageComposer";
+import { ConversationDetail } from "@/types";
 
 type ChatWindowProps = {
-  conversation?: Conversation | null;
+  conversation?: ConversationDetail | null;
 };
 
 export default function ChatWindow({ conversation }: ChatWindowProps) {
@@ -30,45 +30,44 @@ export default function ChatWindow({ conversation }: ChatWindowProps) {
     );
   }
 
+  const initials = conversation.name
+    .split(" ")
+    .map((s) => s[0])
+    .filter(Boolean)
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
+
   return (
     <div className="flex h-full flex-col bg-(--color-background-primary)">
       <header className="flex items-center gap-3 border-b border-(--color-border-tertiary) px-6 py-4">
         <Avatar size="lg">
-          <AvatarFallback
-            className={cn(
-              "text-sm font-medium",
-              conversation.isOnline
-                ? "bg-(--color-brand-50) text-(--color-brand-900)"
-                : "bg-(--color-background-tertiary) text-(--color-text-secondary)"
-            )}
-          >
-            {conversation.isGroup ? (
-              <Users size={18} />
-            ) : (
-              conversation.initials || conversation.name.slice(0, 2).toUpperCase()
-            )}
+          <AvatarFallback className="bg-(--color-brand-50) text-sm font-medium text-(--color-brand-900)">
+            {conversation.type === "GROUP" ? <Users size={18} /> : initials}
           </AvatarFallback>
-          {conversation.isOnline && (
-            <AvatarBadge className="bg-(--color-status-online) ring-(--color-background-primary)" />
-          )}
         </Avatar>
         <div>
           <h2 className="text-sm font-semibold text-(--color-text-primary)">
             {conversation.name}
           </h2>
-          {conversation.isOnline && (
-            <p className="text-xs text-(--color-status-online)">Online</p>
-          )}
-          {conversation.isTyping && (
-            <p className="text-xs italic text-(--color-text-secondary)">Typing...</p>
-          )}
+          <p className="text-xs text-(--color-text-tertiary)">
+            {conversation.type === "DIRECT"
+              ? `@${conversation.otherUser?.username}`
+              : "Group"}
+          </p>
         </div>
       </header>
 
-      <div className="flex flex-1 items-center justify-center">
-        <p className="text-sm text-(--color-text-tertiary)">
-          Messages will appear here
-        </p>
+      <div className="flex flex-1 flex-col overflow-hidden">
+        <div className="flex-1 overflow-y-auto px-6 py-4">
+          <div className="flex h-full items-center justify-center">
+            <p className="text-sm text-(--color-text-tertiary)">
+              No messages yet. Say hello!
+            </p>
+          </div>
+        </div>
+
+        <MessageComposer conversationId={conversation.id} />
       </div>
     </div>
   );

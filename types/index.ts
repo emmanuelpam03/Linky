@@ -86,3 +86,68 @@ export type FriendshipWithFriend = {
     image: string | null;
   };
 };
+
+export type ConversationListItem = {
+  id: string;
+  type: "DIRECT" | "GROUP";
+  name: string;
+  image: string | null;
+  lastMessageAt: Date | null;
+  lastMessage: string | null;
+  unreadCount: number;
+  otherUser: {
+    id: string;
+    name: string;
+    username: string;
+    image: string | null;
+  } | null;
+};
+
+export type MemberWithUser = {
+  userId: string;
+  user: {
+    id: string;
+    name: string;
+    username: string;
+    image: string | null;
+  };
+};
+
+export type LastMessage = {
+  text: string | null;
+  imageUrl: string | null;
+  fileUrl: string | null;
+  fileName: string | null;
+  createdAt: Date;
+};
+
+export type ConversationWithIncludes = {
+  id: string;
+  type: "DIRECT" | "GROUP";
+  name: string | null;
+  image: string | null;
+  lastMessageAt: Date | null;
+  members: MemberWithUser[];
+  messages: LastMessage[];
+};
+
+export type ConversationDetail = {
+  id: string;
+  type: "DIRECT" | "GROUP";
+  name: string;
+  image: string | null;
+  otherUser: {
+    id: string;
+    name: string;
+    username: string;
+    image: string | null;
+  } | null;
+};
+
+export type ConversationWithMembers = {
+  id: string;
+  type: "DIRECT" | "GROUP";
+  name: string | null;
+  image: string | null;
+  members: MemberWithUser[];
+};
