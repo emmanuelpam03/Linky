@@ -88,13 +88,12 @@ export default function CreateGroupModal({
       return;
     }
 
+    setIsCreating(false);
     handleClose();
     if (result.data) {
       onGroupCreated?.(result.data.id);
       router.push(`/groups/${result.data.id}`);
     }
-
-    setIsCreating(false);
   };
 
   return (
@@ -202,7 +201,6 @@ export default function CreateGroupModal({
               size="sm"
               className="rounded-lg border-(--color-border-tertiary)"
               onClick={handleClose}
-              disabled={isCreating}
             >
               Cancel
             </Button>

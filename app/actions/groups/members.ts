@@ -61,22 +61,27 @@ export async function removeGroupMember(
     }
   }
 
-  // Check if target is the last admin
-  const targetMembership = await prisma.conversationMember.findFirst({
-    where: { conversationId, userId },
-  });
-  if (targetMembership?.role === "ADMIN") {
-    const adminCount = await prisma.conversationMember.count({
-      where: { conversationId, role: "ADMIN" },
+  const result = await prisma.$transaction(async (tx) => {
+    const targetMembership = await tx.conversationMember.findFirst({
+      where: { conversationId, userId },
     });
-    if (adminCount <= 1) {
-      return {
-        success: false,
-        error: "Cannot remove the last admin of the group",
-      };
+    if (targetMembership?.role === "ADMIN") {
+      const adminCount = await tx.conversationMember.count({
+        where: { conversationId, role: "ADMIN" },
+      });
+      if (adminCount <= 1) {
+        return {
+          success: false,
+          error: "Cannot remove the last admin of the group",
+        };
+      }
     }
-  }
-
+    await tx.conversationMember.deleteMany({
+      where: { conversationId, userId },
+    });
+    return { success: true };
+  });
+  if (!result.success) return result;
   await prisma.conversationMember.deleteMany({
     where: { conversationId, userId },
   });

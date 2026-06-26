@@ -17,13 +17,18 @@ export default function GroupList() {
   const loadGroups = async () => {
     setError(null);
     setIsLoading(true);
-    const result = await getGroups();
-    if (result.success) {
-      setGroups(result.data);
-    } else {
-      setError(result.error ?? "Failed to load groups");
+    try {
+      const result = await getGroups();
+      if (result.success) {
+        setGroups(result.data);
+      } else {
+        setError(result.error ?? "Failed to load groups");
+      }
+    } catch {
+      setError("Failed to load groups");
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   };
 
   useEffect(() => {
@@ -64,9 +69,7 @@ export default function GroupList() {
             </div>
           ) : error ? (
             <div className="flex items-center justify-center py-16">
-              <p className="text-sm text-(--color-status-error)">
-                {error}
-              </p>
+              <p className="text-sm text-(--color-status-error)">{error}</p>
             </div>
           ) : groups.length === 0 ? (
             <div className="flex items-center justify-center py-16">

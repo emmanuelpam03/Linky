@@ -40,6 +40,7 @@ export default function GroupWindow({ group }: GroupWindowProps) {
         if (cancelled) return;
 
         if (result.success) {
+          isAppendRef.current = true;
           setMessages(result.data);
           setNextCursor(result.nextCursor);
         }
