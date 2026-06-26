@@ -2,7 +2,7 @@
 
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth-session";
-import type { ConversationWithIncludes, GroupListItem } from "@/types";
+import type { ConversationWithIncludes, GroupListItem, RawGroupConversation } from "@/types";
 
 export async function getGroups(): Promise<{
   success: boolean;
@@ -49,10 +49,7 @@ export async function getGroups(): Promise<{
     orderBy: { lastMessageAt: "desc" },
   });
 
-  type RawGroup = (typeof raw)[number];
-  type RawMessage = RawGroup["messages"][number];
-
-  const data: GroupListItem[] = raw.map((c) => {
+  const data: GroupListItem[] = (raw as unknown as RawGroupConversation[]).map((c) => {
   const lastMsg = c.messages[0] ?? null;
   const myMembership = c.members.find((m) => m.userId === userId);
 
@@ -73,7 +70,7 @@ export async function getGroups(): Promise<{
     lastMessageAt: c.lastMessageAt,
     lastMessage: lastMessageText,
     memberCount: c.members.length,
-    role: myMembership?.role ?? "MEMBER",
+    role: (myMembership?.role ?? "MEMBER") as "ADMIN" | "MEMBER",
   };
 });
 

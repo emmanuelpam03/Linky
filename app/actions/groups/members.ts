@@ -27,6 +27,14 @@ export async function addGroupMember(conversationId: string, userId: string) {
     return { success: false, error: "You can only add friends to the group" };
   }
 
+  const existingMembership = await prisma.conversationMember.findFirst({
+    where: { conversationId, userId },
+  });
+
+  if (existingMembership) {
+    return { success: false, error: "User is already a member" };
+  }
+
   await prisma.conversationMember.create({
     data: { conversationId, userId, role: "MEMBER" },
   });
@@ -50,6 +58,22 @@ export async function removeGroupMember(
     });
     if (!requesterMembership) {
       return { success: false, error: "Only admins can remove members" };
+    }
+  }
+
+  // Check if target is the last admin
+  const targetMembership = await prisma.conversationMember.findFirst({
+    where: { conversationId, userId },
+  });
+  if (targetMembership?.role === "ADMIN") {
+    const adminCount = await prisma.conversationMember.count({
+      where: { conversationId, role: "ADMIN" },
+    });
+    if (adminCount <= 1) {
+      return {
+        success: false,
+        error: "Cannot remove the last admin of the group",
+      };
     }
   }
 

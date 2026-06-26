@@ -18,6 +18,12 @@ export async function createGroup({
 
   const userId = session.user.id;
 
+  const trimmedName = name.trim();
+
+  if (!trimmedName) {
+    return { success: false, error: "Group name is required", data: null };
+  }
+
   // Verify all memberIds are friends of the creator
   const friendships = await prisma.friend.findMany({
     where: {
@@ -38,10 +44,18 @@ export async function createGroup({
     };
   }
 
+  if (verifiedFriendIds.length === 0) {
+    return {
+      success: false,
+      error: "Add at least one member to create a group",
+      data: null,
+    };
+  }
+
   const conversation = await prisma.conversation.create({
     data: {
       type: "GROUP",
-      name: name.trim(),
+      name: trimmedName,
       description: description?.trim(),
       createdBy: userId,
       members: {

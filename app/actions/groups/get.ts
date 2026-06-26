@@ -2,7 +2,7 @@
 
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth-session";
-import { GroupDetail } from "@/types";
+import { GroupDetail, RawGroupConversation } from "@/types";
 
 export async function getGroup(conversationId: string): Promise<{
   success: boolean;
@@ -40,8 +40,8 @@ export async function getGroup(conversationId: string): Promise<{
 
   if (!raw) return { success: false, error: "Group not found", data: null };
 
-  type RawConversation = typeof raw & { description: string | null };
-  const conversation = raw as RawConversation;
+  const conversation = raw as unknown as RawGroupConversation;
+  conversation.description = conversation.description ?? null;
 
   const myMembership = conversation.members.find((m) => m.userId === userId);
 

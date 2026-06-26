@@ -53,6 +53,7 @@ export default function CreateGroupModal({
   };
 
   const handleClose = () => {
+    if (isCreating) return;
     onOpenChange(false);
     resetForm();
   };
@@ -105,6 +106,7 @@ export default function CreateGroupModal({
           </h2>
           <button
             onClick={handleClose}
+            disabled={isCreating}
             className="rounded-lg p-1.5 text-(--color-text-tertiary) hover:bg-(--color-background-secondary) transition-colors"
           >
             <X className="size-4" />
@@ -200,6 +202,7 @@ export default function CreateGroupModal({
               size="sm"
               className="rounded-lg border-(--color-border-tertiary)"
               onClick={handleClose}
+              disabled={isCreating}
             >
               Cancel
             </Button>

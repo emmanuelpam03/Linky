@@ -12,10 +12,17 @@ export default function GroupList() {
   const [createOpen, setCreateOpen] = useState(false);
   const [groups, setGroups] = useState<GroupListItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const loadGroups = async () => {
+    setError(null);
+    setIsLoading(true);
     const result = await getGroups();
-    if (result.success) setGroups(result.data);
+    if (result.success) {
+      setGroups(result.data);
+    } else {
+      setError(result.error ?? "Failed to load groups");
+    }
     setIsLoading(false);
   };
 
@@ -54,6 +61,12 @@ export default function GroupList() {
           {isLoading ? (
             <div className="flex items-center justify-center py-16">
               <Loader2 className="size-6 animate-spin text-(--color-text-tertiary)" />
+            </div>
+          ) : error ? (
+            <div className="flex items-center justify-center py-16">
+              <p className="text-sm text-(--color-status-error)">
+                {error}
+              </p>
             </div>
           ) : groups.length === 0 ? (
             <div className="flex items-center justify-center py-16">

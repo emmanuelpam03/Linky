@@ -21,6 +21,8 @@ export default function GroupWindow({ group }: GroupWindowProps) {
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const isAppendRef = useRef(false);
+  const prevLengthRef = useRef(0);
 
   useEffect(() => {
     if (!group) return;
@@ -33,14 +35,17 @@ export default function GroupWindow({ group }: GroupWindowProps) {
       setMessages([]);
       setNextCursor(null);
 
-      const result = await getMessages(conversationId);
-      if (cancelled) return;
+      try {
+        const result = await getMessages(conversationId);
+        if (cancelled) return;
 
-      if (result.success) {
-        setMessages(result.data);
-        setNextCursor(result.nextCursor);
+        if (result.success) {
+          setMessages(result.data);
+          setNextCursor(result.nextCursor);
+        }
+      } finally {
+        if (!cancelled) setIsLoading(false);
       }
-      setIsLoading(false);
     };
 
     load();
@@ -51,7 +56,12 @@ export default function GroupWindow({ group }: GroupWindowProps) {
   }, [group]);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    // Only scroll to bottom on appended new messages, not on prepend from load-more
+    if (isAppendRef.current) {
+      isAppendRef.current = false;
+      bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
+    prevLengthRef.current = messages.length;
   }, [messages.length]);
 
   const handleLoadMore = useCallback(async () => {
@@ -61,19 +71,21 @@ export default function GroupWindow({ group }: GroupWindowProps) {
     const container = scrollRef.current;
     const prevScrollHeight = container?.scrollHeight ?? 0;
 
-    const result = await getMessages(group.id, nextCursor);
+    try {
+      const result = await getMessages(group.id, nextCursor);
 
-    if (result.success) {
-      setMessages((prev) => [...result.data, ...prev]);
-      setNextCursor(result.nextCursor);
-      requestAnimationFrame(() => {
-        if (container) {
-          container.scrollTop = container.scrollHeight - prevScrollHeight;
-        }
-      });
+      if (result.success) {
+        setMessages((prev) => [...result.data, ...prev]);
+        setNextCursor(result.nextCursor);
+        requestAnimationFrame(() => {
+          if (container) {
+            container.scrollTop = container.scrollHeight - prevScrollHeight;
+          }
+        });
+      }
+    } finally {
+      setIsLoadingMore(false);
     }
-
-    setIsLoadingMore(false);
   }, [group, nextCursor, isLoadingMore]);
 
   const handleScroll = useCallback(() => {
@@ -85,6 +97,7 @@ export default function GroupWindow({ group }: GroupWindowProps) {
   }, [nextCursor, isLoadingMore, handleLoadMore]);
 
   const handleMessageSent = (message: MessageItem) => {
+    isAppendRef.current = true;
     setMessages((prev) => [...prev, message]);
   };
 
