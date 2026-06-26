@@ -76,23 +76,27 @@ export default function CreateGroupModal({
     setIsCreating(true);
     setError(null);
 
-    const result = await createGroup({
-      name,
-      description: description.trim(),
-      memberIds: selectedIds,
-    });
+    try {
+      const result = await createGroup({
+        name,
+        description: description.trim(),
+        memberIds: selectedIds,
+      });
 
-    if (!result.success) {
-      setError(result.error ?? "Failed to create group");
+      if (!result.success) {
+        setError(result.error ?? "Failed to create group");
+        return;
+      }
+
+      handleClose();
+      if (result.data) {
+        onGroupCreated?.(result.data.id);
+        router.push(`/groups/${result.data.id}`);
+      }
+    } catch {
+      setError("Failed to create group");
+    } finally {
       setIsCreating(false);
-      return;
-    }
-
-    setIsCreating(false);
-    handleClose();
-    if (result.data) {
-      onGroupCreated?.(result.data.id);
-      router.push(`/groups/${result.data.id}`);
     }
   };
 
