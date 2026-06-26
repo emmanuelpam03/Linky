@@ -1,14 +1,102 @@
 "use client";
 
-import { Users } from "lucide-react";
-import type { Group } from "@/types";
-import { GroupIconBadge } from "./GroupIconBadge";
+import { useEffect, useRef, useState, useCallback } from "react";
+import { Users, Loader2 } from "lucide-react";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import type { GroupDetail, MessageItem } from "@/types";
+import { getMessages } from "@/app/actions/messages/list";
+import MessageBubble from "@/components/chats/MessageBubble";
+import MessageComposer from "@/components/chats/MessageComposer";
 
 type GroupWindowProps = {
-  group?: Group | null;
+  group?: GroupDetail | null;
 };
 
+const PAGE_SIZE = 50;
+
 export default function GroupWindow({ group }: GroupWindowProps) {
+  const [messages, setMessages] = useState<MessageItem[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const bottomRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!group) return;
+
+    let cancelled = false;
+    const conversationId = group.id;
+
+    const load = async () => {
+      setIsLoading(true);
+      setMessages([]);
+      setNextCursor(null);
+
+      const result = await getMessages(conversationId);
+      if (cancelled) return;
+
+      if (result.success) {
+        setMessages(result.data);
+        setNextCursor(result.nextCursor);
+      }
+      setIsLoading(false);
+    };
+
+    load();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [group]);
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages.length]);
+
+  const handleLoadMore = useCallback(async () => {
+    if (!group || !nextCursor || isLoadingMore) return;
+
+    setIsLoadingMore(true);
+    const container = scrollRef.current;
+    const prevScrollHeight = container?.scrollHeight ?? 0;
+
+    const result = await getMessages(group.id, nextCursor);
+
+    if (result.success) {
+      setMessages((prev) => [...result.data, ...prev]);
+      setNextCursor(result.nextCursor);
+      requestAnimationFrame(() => {
+        if (container) {
+          container.scrollTop = container.scrollHeight - prevScrollHeight;
+        }
+      });
+    }
+
+    setIsLoadingMore(false);
+  }, [group, nextCursor, isLoadingMore]);
+
+  const handleScroll = useCallback(() => {
+    const container = scrollRef.current;
+    if (!container) return;
+    if (container.scrollTop === 0 && nextCursor && !isLoadingMore) {
+      handleLoadMore();
+    }
+  }, [nextCursor, isLoadingMore, handleLoadMore]);
+
+  const handleMessageSent = (message: MessageItem) => {
+    setMessages((prev) => [...prev, message]);
+  };
+
+  const handleMessageUpdated = (
+    messageId: string,
+    updates: Partial<MessageItem>,
+  ) => {
+    setMessages((prev) =>
+      prev.map((m) => (m.id === messageId ? { ...m, ...updates } : m)),
+    );
+  };
+
   if (!group) {
     return (
       <div className="flex h-full flex-col items-center justify-center bg-(--color-background-primary)">
@@ -29,19 +117,91 @@ export default function GroupWindow({ group }: GroupWindowProps) {
     );
   }
 
+  const initials = group.name
+    .split(" ")
+    .map((s) => s[0])
+    .filter(Boolean)
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
+
   return (
     <div className="flex h-full flex-col bg-(--color-background-primary)">
       <header className="flex items-center gap-3 border-b border-(--color-border-tertiary) px-6 py-4">
-        <GroupIconBadge icon={group.icon} />
-        <h2 className="text-sm font-semibold text-(--color-text-primary)">
-          {group.name}
-        </h2>
+        <Avatar size="lg">
+          <AvatarFallback className="bg-(--color-background-tertiary) text-sm font-medium text-(--color-text-secondary)">
+            {initials || <Users size={16} />}
+          </AvatarFallback>
+        </Avatar>
+        <div>
+          <h2 className="text-sm font-semibold text-(--color-text-primary)">
+            {group.name}
+          </h2>
+          <p className="text-xs text-(--color-text-tertiary)">
+            {group.memberCount} members
+          </p>
+        </div>
       </header>
 
-      <div className="flex flex-1 items-center justify-center">
-        <p className="text-sm text-(--color-text-tertiary)">
-          Messages will appear here
-        </p>
+      <div className="flex flex-1 flex-col overflow-hidden">
+        <div
+          ref={scrollRef}
+          onScroll={handleScroll}
+          className="flex-1 overflow-y-auto px-6 py-4"
+        >
+          {isLoading ? (
+            <div className="flex h-full items-center justify-center">
+              <Loader2 className="size-6 animate-spin text-(--color-text-tertiary)" />
+            </div>
+          ) : (
+            <>
+              {isLoadingMore && (
+                <div className="flex justify-center pb-4">
+                  <Loader2 className="size-4 animate-spin text-(--color-text-tertiary)" />
+                </div>
+              )}
+              {nextCursor && !isLoadingMore && (
+                <div className="flex justify-center pb-4">
+                  <button
+                    onClick={handleLoadMore}
+                    className="text-xs text-(--color-brand-400) hover:underline"
+                  >
+                    Load older messages
+                  </button>
+                </div>
+              )}
+              {messages.length === 0 ? (
+                <div className="flex h-full items-center justify-center">
+                  <p className="text-sm text-(--color-text-tertiary)">
+                    No messages yet. Start the conversation!
+                  </p>
+                </div>
+              ) : (
+                <div className="flex flex-col gap-3">
+                  {messages.map((message, index) => {
+                    const prev = messages[index - 1];
+                    const showAvatar =
+                      !prev || prev.senderId !== message.senderId;
+                    return (
+                      <MessageBubble
+                        key={message.id}
+                        message={message}
+                        showAvatar={showAvatar}
+                        onMessageUpdated={handleMessageUpdated}
+                      />
+                    );
+                  })}
+                  <div ref={bottomRef} />
+                </div>
+              )}
+            </>
+          )}
+        </div>
+
+        <MessageComposer
+          conversationId={group.id}
+          onMessageSent={handleMessageSent}
+        />
       </div>
     </div>
   );

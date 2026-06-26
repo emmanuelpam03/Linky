@@ -1,3 +1,5 @@
+// ── Legacy UI types (mock data) ──────────────────────────────────────────────
+
 export type Conversation = {
   id: string;
   name: string;
@@ -20,9 +22,18 @@ export type Group = {
   icon: GroupIcon;
 };
 
-// ── Friend system types ──
+// ── User ─────────────────────────────────────────────────────────────────────
 
 export type UserResult = {
+  id: string;
+  name: string;
+  username: string;
+  image: string | null;
+};
+
+// ── Friends ──────────────────────────────────────────────────────────────────
+
+export type Friend = {
   id: string;
   name: string;
   username: string;
@@ -35,13 +46,6 @@ export type FriendRequest = {
   createdAt: Date;
   sender: UserResult;
   receiver: UserResult;
-};
-
-export type Friend = {
-  id: string;
-  name: string;
-  username: string;
-  image: string | null;
 };
 
 export type FriendRequestWithSender = {
@@ -87,21 +91,7 @@ export type FriendshipWithFriend = {
   };
 };
 
-export type ConversationListItem = {
-  id: string;
-  type: "DIRECT" | "GROUP";
-  name: string;
-  image: string | null;
-  lastMessageAt: Date | null;
-  lastMessage: string | null;
-  unreadCount: number;
-  otherUser: {
-    id: string;
-    name: string;
-    username: string;
-    image: string | null;
-  } | null;
-};
+// ── Conversations ─────────────────────────────────────────────────────────────
 
 export type MemberWithUser = {
   userId: string;
@@ -131,6 +121,30 @@ export type ConversationWithIncludes = {
   messages: LastMessage[];
 };
 
+export type ConversationWithMembers = {
+  id: string;
+  type: "DIRECT" | "GROUP";
+  name: string | null;
+  image: string | null;
+  members: MemberWithUser[];
+};
+
+export type ConversationListItem = {
+  id: string;
+  type: "DIRECT" | "GROUP";
+  name: string;
+  image: string | null;
+  lastMessageAt: Date | null;
+  lastMessage: string | null;
+  unreadCount: number;
+  otherUser: {
+    id: string;
+    name: string;
+    username: string;
+    image: string | null;
+  } | null;
+};
+
 export type ConversationDetail = {
   id: string;
   type: "DIRECT" | "GROUP";
@@ -144,13 +158,44 @@ export type ConversationDetail = {
   } | null;
 };
 
-export type ConversationWithMembers = {
+// ── Groups ────────────────────────────────────────────────────────────────────
+
+export type GroupListItem = {
   id: string;
-  type: "DIRECT" | "GROUP";
-  name: string | null;
+  name: string;
+  description: string | null;
   image: string | null;
-  members: MemberWithUser[];
+  lastMessageAt: Date | null;
+  lastMessage: string | null;
+  memberCount: number;
+  role: "ADMIN" | "MEMBER";
 };
+
+export type GroupMember = {
+  id: string;
+  userId: string;
+  role: "ADMIN" | "MEMBER";
+  joinedAt: Date;
+  user: {
+    id: string;
+    name: string;
+    username: string;
+    image: string | null;
+  };
+};
+
+export type GroupDetail = {
+  id: string;
+  name: string;
+  description: string | null;
+  image: string | null;
+  createdBy: string;
+  memberCount: number;
+  members: GroupMember[];
+  currentUserRole: "ADMIN" | "MEMBER";
+};
+
+// ── Messages ──────────────────────────────────────────────────────────────────
 
 export type MessageWithSender = {
   id: string;
@@ -188,5 +233,18 @@ export type MessageItem = {
   };
   isOwn: boolean;
   deletedForEveryone: boolean;
-  deletedForSelf: boolean; // true if current user deleted it for themselves
+  deletedForSelf: boolean;
+};
+
+// ── Prisma intermediate types ─────────────────────────────────────────────────
+
+export type RawGroupConversation = {
+  id: string;
+  name: string | null;
+  description: string | null;
+  image: string | null;
+  createdBy: string;
+  lastMessageAt: Date | null;
+  members: (MemberWithUser & { id: string; role: string; joinedAt: Date })[];
+  messages: (LastMessage & { sender: { name: string } })[];
 };

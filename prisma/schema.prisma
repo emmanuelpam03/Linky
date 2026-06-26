@@ -125,6 +125,7 @@ model Conversation {
   type      ConversationType @default(DIRECT)
   name      String?
   image     String?
+  description String?        // group description
   createdBy String
   pairKey   String?          @unique // sorted userId pair for DIRECT chats
 

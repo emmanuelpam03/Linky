@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import GroupWindow from "@/components/groups/GroupWindow";
-import { getGroupById } from "@/lib/mock-groups";
+import { getGroup } from "@/app/actions/groups/get";
 
 type PageProps = {
   params: Promise<{ conversationId: string }>;
@@ -8,11 +8,11 @@ type PageProps = {
 
 export default async function GroupConversationPage({ params }: PageProps) {
   const { conversationId } = await params;
-  const group = getGroupById(conversationId);
+  const result = await getGroup(conversationId);
 
-  if (!group) {
+  if (!result.success || !result.data) {
     notFound();
   }
 
-  return <GroupWindow group={group} />;
+  return <GroupWindow group={result.data} />;
 }
