@@ -1,12 +1,16 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
-import { MessageCircle, Users, Loader2 } from "lucide-react";
+import { MessageCircle, Users, Loader2, Info } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import type { ConversationDetail, MessageItem } from "@/types";
 import { getMessages } from "@/app/actions/messages/list";
 import MessageBubble from "./MessageBubble";
 import MessageComposer from "./MessageComposer";
+import ChatSettingsPanel from "./ChatSettingsPanel";
+import GroupSettingsPanel from "@/components/groups/GroupSettingsPanel";
+import { getGroup } from "@/app/actions/groups/get";
+import type { GroupDetail } from "@/types";
 
 type ChatWindowProps = {
   conversation?: ConversationDetail | null;
@@ -17,6 +21,10 @@ export default function ChatWindow({ conversation }: ChatWindowProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [showSettings, setShowSettings] = useState(false);
+  const [groupDetail, setGroupDetail] = useState<GroupDetail | null>(null);
+  const [isLoadingGroup, setIsLoadingGroup] = useState(false);
+
   const bottomRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -48,7 +56,6 @@ export default function ChatWindow({ conversation }: ChatWindowProps) {
     };
   }, [conversation]);
 
-  // Scroll to bottom on initial load and new messages
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages.length]);
@@ -58,7 +65,6 @@ export default function ChatWindow({ conversation }: ChatWindowProps) {
 
     setIsLoadingMore(true);
 
-    // Save scroll position before prepending
     const container = scrollRef.current;
     const prevScrollHeight = container?.scrollHeight ?? 0;
 
@@ -68,7 +74,6 @@ export default function ChatWindow({ conversation }: ChatWindowProps) {
       setMessages((prev) => [...result.data, ...prev]);
       setNextCursor(result.nextCursor);
 
-      // Restore scroll position after prepend
       requestAnimationFrame(() => {
         if (container) {
           container.scrollTop = container.scrollHeight - prevScrollHeight;
@@ -79,7 +84,6 @@ export default function ChatWindow({ conversation }: ChatWindowProps) {
     setIsLoadingMore(false);
   }, [conversation, nextCursor, isLoadingMore]);
 
-  // Detect scroll to top to load more
   const handleScroll = useCallback(() => {
     const container = scrollRef.current;
     if (!container) return;
@@ -99,6 +103,31 @@ export default function ChatWindow({ conversation }: ChatWindowProps) {
     setMessages((prev) =>
       prev.map((m) => (m.id === messageId ? { ...m, ...updates } : m)),
     );
+  };
+
+  const handleToggleSettings = async () => {
+    if (!conversation) return;
+
+    const currentConversation = conversation;
+
+    if (showSettings) {
+      setShowSettings(false);
+      return;
+    }
+
+    if (currentConversation.type === "GROUP" && !groupDetail) {
+      setIsLoadingGroup(true);
+
+      const result = await getGroup(currentConversation.id);
+
+      if (result.success && result.data) {
+        setGroupDetail(result.data);
+      }
+
+      setIsLoadingGroup(false);
+    }
+
+    setShowSettings(true);
   };
 
   if (!conversation) {
@@ -130,89 +159,115 @@ export default function ChatWindow({ conversation }: ChatWindowProps) {
     .toUpperCase();
 
   return (
-    <div className="flex h-full flex-col bg-(--color-background-primary)">
-      <header className="flex items-center gap-3 border-b border-(--color-border-tertiary) px-6 py-4">
-        <Avatar size="lg">
-          <AvatarFallback className="bg-(--color-brand-50) text-sm font-medium text-(--color-brand-900)">
-            {conversation.type === "GROUP" ? <Users size={18} /> : initials}
-          </AvatarFallback>
-        </Avatar>
-        <div>
-          <h2 className="text-sm font-semibold text-(--color-text-primary)">
-            {conversation.name}
-          </h2>
-          <p className="text-xs text-(--color-text-tertiary)">
-            {conversation.type === "DIRECT"
-              ? `@${conversation.otherUser?.username}`
-              : "Group"}
-          </p>
+    <div className="flex h-full overflow-hidden">
+      <div className="flex h-full flex-1 flex-col bg-(--color-background-primary)">
+        <header className="flex items-center gap-3 border-b border-(--color-border-tertiary) px-6 py-4">
+          <Avatar size="lg">
+            <AvatarFallback className="bg-(--color-brand-50) text-sm font-medium text-(--color-brand-900)">
+              {conversation.type === "GROUP" ? <Users size={18} /> : initials}
+            </AvatarFallback>
+          </Avatar>
+          <div className="flex-1">
+            <h2 className="text-sm font-semibold text-(--color-text-primary)">
+              {conversation.name}
+            </h2>
+            <p className="text-xs text-(--color-text-tertiary)">
+              {conversation.type === "DIRECT"
+                ? `@${conversation.otherUser?.username}`
+                : "Group"}
+            </p>
+          </div>
+          <button
+            onClick={handleToggleSettings}
+            disabled={isLoadingGroup}
+            className="rounded-lg p-1.5 text-(--color-text-tertiary) hover:bg-(--color-background-secondary) transition-colors"
+          >
+            {isLoadingGroup ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : (
+              <Info className="size-5" />
+            )}
+          </button>
+        </header>
+
+        <div className="flex flex-1 flex-col overflow-hidden">
+          <div
+            ref={scrollRef}
+            onScroll={handleScroll}
+            className="flex-1 overflow-y-auto px-6 py-4"
+          >
+            {isLoading ? (
+              <div className="flex h-full items-center justify-center">
+                <Loader2 className="size-6 animate-spin text-(--color-text-tertiary)" />
+              </div>
+            ) : (
+              <>
+                {isLoadingMore && (
+                  <div className="flex justify-center pb-4">
+                    <Loader2 className="size-4 animate-spin text-(--color-text-tertiary)" />
+                  </div>
+                )}
+                {nextCursor && !isLoadingMore && (
+                  <div className="flex justify-center pb-4">
+                    <button
+                      onClick={handleLoadMore}
+                      className="text-xs text-(--color-brand-400) hover:underline"
+                    >
+                      Load older messages
+                    </button>
+                  </div>
+                )}
+                {messages.length === 0 ? (
+                  <div className="flex h-full items-center justify-center">
+                    <p className="text-sm text-(--color-text-tertiary)">
+                      No messages yet. Say hello!
+                    </p>
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-3">
+                    {messages.map((message, index) => {
+                      const prev = messages[index - 1];
+                      const showAvatar =
+                        !prev || prev.senderId !== message.senderId;
+                      return (
+                        <MessageBubble
+                          key={message.id}
+                          message={message}
+                          showAvatar={showAvatar}
+                          onMessageUpdated={handleMessageUpdated}
+                        />
+                      );
+                    })}
+                    <div ref={bottomRef} />
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+
+          <MessageComposer
+            conversationId={conversation.id}
+            onMessageSent={handleMessageSent}
+          />
         </div>
-      </header>
-
-      <div className="flex flex-1 flex-col overflow-hidden">
-        <div
-          ref={scrollRef}
-          onScroll={handleScroll}
-          className="flex-1 overflow-y-auto px-6 py-4"
-        >
-          {isLoading ? (
-            <div className="flex h-full items-center justify-center">
-              <Loader2 className="size-6 animate-spin text-(--color-text-tertiary)" />
-            </div>
-          ) : (
-            <>
-              {/* Load more indicator at top */}
-              {isLoadingMore && (
-                <div className="flex justify-center pb-4">
-                  <Loader2 className="size-4 animate-spin text-(--color-text-tertiary)" />
-                </div>
-              )}
-
-              {/* Load more button if there are older messages */}
-              {nextCursor && !isLoadingMore && (
-                <div className="flex justify-center pb-4">
-                  <button
-                    onClick={handleLoadMore}
-                    className="text-xs text-(--color-brand-400) hover:underline"
-                  >
-                    Load older messages
-                  </button>
-                </div>
-              )}
-
-              {messages.length === 0 ? (
-                <div className="flex h-full items-center justify-center">
-                  <p className="text-sm text-(--color-text-tertiary)">
-                    No messages yet. Say hello!
-                  </p>
-                </div>
-              ) : (
-                <div className="flex flex-col gap-3">
-                  {messages.map((message, index) => {
-                    const prev = messages[index - 1];
-                    const showAvatar =
-                      !prev || prev.senderId !== message.senderId;
-                    return (
-                      <MessageBubble
-                        key={message.id}
-                        message={message}
-                        showAvatar={showAvatar}
-                        onMessageUpdated={handleMessageUpdated}
-                      />
-                    );
-                  })}
-                  <div ref={bottomRef} />
-                </div>
-              )}
-            </>
-          )}
-        </div>
-
-        <MessageComposer
-          conversationId={conversation.id}
-          onMessageSent={handleMessageSent}
-        />
       </div>
+
+      {showSettings && conversation.type === "DIRECT" && (
+        <ChatSettingsPanel
+          conversation={conversation}
+          onClose={() => setShowSettings(false)}
+        />
+      )}
+
+      {showSettings && conversation.type === "GROUP" && groupDetail && (
+        <GroupSettingsPanel
+          group={groupDetail}
+          onClose={() => setShowSettings(false)}
+          onGroupUpdated={(updates) =>
+            setGroupDetail((prev) => (prev ? { ...prev, ...updates } : prev))
+          }
+        />
+      )}
     </div>
   );
 }

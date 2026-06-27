@@ -155,6 +155,7 @@ export type ConversationDetail = {
     name: string;
     username: string;
     image: string | null;
+    bio: string | null;
   } | null;
 };
 

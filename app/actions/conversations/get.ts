@@ -29,6 +29,7 @@ export async function getConversation(conversationId: string): Promise<{
               name: true,
               username: true,
               image: true,
+              bio: true,
             },
           },
         },
@@ -57,7 +58,12 @@ export async function getConversation(conversationId: string): Promise<{
         conversation.type === "DIRECT"
           ? (otherMember?.user.image ?? null)
           : (conversation.image ?? null),
-      otherUser: otherMember?.user ?? null,
+      otherUser: otherMember
+        ? {
+            ...otherMember.user,
+            bio: (otherMember.user as { bio?: string | null }).bio ?? null,
+          }
+        : null,
     },
   };
 }
