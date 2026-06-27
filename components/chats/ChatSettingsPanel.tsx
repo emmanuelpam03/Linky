@@ -113,6 +113,7 @@ export default function ChatSettingsPanel({
         </h3>
         <button
           onClick={onClose}
+          aria-label="Close chat info"
           className="rounded-lg p-1.5 text-(--color-text-tertiary) hover:bg-(--color-background-secondary) transition-colors"
         >
           <X className="size-4" />
@@ -249,11 +250,12 @@ export default function ChatSettingsPanel({
           </p>
 
           <button
-            onClick={() => {}}
-            className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-(--color-text-secondary) hover:bg-(--color-background-secondary) transition-colors"
+            disabled
+            className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-(--color-text-secondary) hover:bg-(--color-background-secondary) transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            title="Coming soon"
           >
             <ShieldAlert className="size-4 text-(--color-coral-400)" />
-            Block user
+            Block user — Coming soon
           </button>
 
           <button

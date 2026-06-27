@@ -21,6 +21,14 @@ export default function GroupWindow({ group }: GroupWindowProps) {
   const [showSettings, setShowSettings] = useState(false);
   const [groupData, setGroupData] = useState<GroupDetail | null>(group ?? null);
   const bottomRef = useRef<HTMLDivElement>(null);
+
+  // Reset groupData when group prop changes (render-time pattern avoids cascading renders)
+  const prevGroupIdRef = useRef(group?.id);
+  if (group?.id !== prevGroupIdRef.current) {
+    prevGroupIdRef.current = group?.id;
+    setGroupData(group ?? null);
+  }
+
   const scrollRef = useRef<HTMLDivElement>(null);
   const isAppendRef = useRef(false);
   const prevLengthRef = useRef(0);

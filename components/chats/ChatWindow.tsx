@@ -27,6 +27,23 @@ export default function ChatWindow({ conversation }: ChatWindowProps) {
 
   const bottomRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const conversationIdRef = useRef(conversation?.id);
+  const lastConversationId = useRef<string | undefined>(conversation?.id);
+
+  useEffect(() => {
+    if (lastConversationId.current !== conversation?.id) {
+      lastConversationId.current = conversation?.id;
+
+      setGroupDetail(null);
+      setShowSettings(false);
+      setIsLoadingGroup(false);
+    }
+  }, [conversation?.id]);
+
+  // Sync the ref in a useEffect (safe — refs should not be written during render)
+  useEffect(() => {
+    conversationIdRef.current = conversation?.id;
+  }, [conversation]);
 
   useEffect(() => {
     if (!conversation) return;
@@ -109,6 +126,7 @@ export default function ChatWindow({ conversation }: ChatWindowProps) {
     if (!conversation) return;
 
     const currentConversation = conversation;
+    const currentConvId = conversation.id;
 
     if (showSettings) {
       setShowSettings(false);
@@ -118,13 +136,21 @@ export default function ChatWindow({ conversation }: ChatWindowProps) {
     if (currentConversation.type === "GROUP" && !groupDetail) {
       setIsLoadingGroup(true);
 
-      const result = await getGroup(currentConversation.id);
+      try {
+        const result = await getGroup(currentConversation.id);
 
-      if (result.success && result.data) {
-        setGroupDetail(result.data);
+        // Guard: only apply the response if still on the same conversation
+        if (currentConvId !== conversationIdRef.current) return;
+
+        if (result.success && result.data) {
+          setGroupDetail(result.data);
+        }
+      } finally {
+        // Always clear loading state, even on failure
+        if (currentConvId === conversationIdRef.current) {
+          setIsLoadingGroup(false);
+        }
       }
-
-      setIsLoadingGroup(false);
     }
 
     setShowSettings(true);

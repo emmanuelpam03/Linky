@@ -139,19 +139,23 @@ export default function GroupSettingsPanel({
     setAvatarError("");
     setIsUploadingAvatar(true);
 
-    const formData = new FormData();
-    formData.append("avatar", file);
+    try {
+      const formData = new FormData();
+      formData.append("avatar", file);
 
-    const result = await uploadGroupAvatar(group.id, formData);
+      const result = await uploadGroupAvatar(group.id, formData);
 
-    if (!result.success) {
-      setAvatarError(result.error ?? "Upload failed");
-    } else {
-      setLocalAvatar(result.imageUrl);
-      onGroupUpdated({ image: result.imageUrl });
+      if (!result.success) {
+        setAvatarError(result.error ?? "Upload failed");
+      } else {
+        setLocalAvatar(result.imageUrl);
+        onGroupUpdated({ image: result.imageUrl });
+      }
+    } catch {
+      setAvatarError("Upload failed unexpectedly");
+    } finally {
+      setIsUploadingAvatar(false);
     }
-
-    setIsUploadingAvatar(false);
   };
 
   // ── Name ──────────────────────────────────────────────────────────────────
@@ -162,28 +166,40 @@ export default function GroupSettingsPanel({
     }
     setIsSavingName(true);
     setNameError("");
-    const result = await updateGroup(group.id, { name: nameValue.trim() });
-    if (!result.success) {
-      setNameError(result.error ?? "Failed to update name");
-    } else {
-      onGroupUpdated({ name: nameValue.trim() });
-      setIsEditingName(false);
+    try {
+      const result = await updateGroup(group.id, { name: nameValue.trim() });
+      if (!result.success) {
+        setNameError(result.error ?? "Failed to update name");
+      } else {
+        onGroupUpdated({ name: nameValue.trim() });
+        setIsEditingName(false);
+      }
+    } catch {
+      setNameError("Failed to update name");
+    } finally {
+      setIsSavingName(false);
     }
-    setIsSavingName(false);
   };
 
   // ── Description ───────────────────────────────────────────────────────────
   const handleSaveDesc = async () => {
     setIsSavingDesc(true);
     setDescError("");
-    const result = await updateGroup(group.id, { description: descValue });
-    if (!result.success) {
-      setDescError(result.error ?? "Failed to update description");
-    } else {
-      onGroupUpdated({ description: descValue });
-      setIsEditingDesc(false);
+    const description = descValue.trim();
+    try {
+      const result = await updateGroup(group.id, { description });
+      if (!result.success) {
+        setDescError(result.error ?? "Failed to update description");
+      } else {
+        setDescValue(description);
+        onGroupUpdated({ description });
+        setIsEditingDesc(false);
+      }
+    } catch {
+      setDescError("Failed to update description");
+    } finally {
+      setIsSavingDesc(false);
     }
-    setIsSavingDesc(false);
   };
 
   // ── Members ───────────────────────────────────────────────────────────────
@@ -194,61 +210,106 @@ export default function GroupSettingsPanel({
     }
     setIsLoadingFriends(true);
     setShowAddMember(true);
-    const result = await getFriends();
-    if (result.success) {
-      const memberIds = new Set(group.members.map((m) => m.userId));
-      setFriends(result.data.filter((f) => !memberIds.has(f.id)));
+    try {
+      const result = await getFriends();
+      if (result.success) {
+        const memberIds = new Set(group.members.map((m) => m.userId));
+        setFriends(result.data.filter((f) => !memberIds.has(f.id)));
+      }
+    } finally {
+      setIsLoadingFriends(false);
     }
-    setIsLoadingFriends(false);
   };
 
   const handleAddMember = async (friendId: string) => {
     setActionLoading((prev) => ({ ...prev, [friendId]: true }));
-    const result = await addGroupMember(group.id, friendId);
-    if (!result.success) {
-      setErrors((prev) => ({ ...prev, [friendId]: result.error ?? "Failed" }));
-    } else {
-      setFriends((prev) => prev.filter((f) => f.id !== friendId));
-      onGroupUpdated({ memberCount: group.memberCount + 1 });
+    try {
+      const result = await addGroupMember(group.id, friendId);
+      if (!result.success) {
+        setErrors((prev) => ({ ...prev, [friendId]: result.error ?? "Failed" }));
+      } else {
+        // Construct a GroupMember from friend data so the list updates immediately
+        const friend = friends.find((f) => f.id === friendId);
+        if (friend) {
+          const newMember: GroupMember = {
+            id: `new-${friend.id}`,
+            userId: friend.id,
+            role: "MEMBER",
+            joinedAt: new Date(),
+            user: {
+              id: friend.id,
+              name: friend.name,
+              username: friend.username,
+              image: friend.image,
+            },
+          };
+          onGroupUpdated({
+            members: [...group.members, newMember],
+            memberCount: group.memberCount + 1,
+          });
+        } else {
+          onGroupUpdated({ memberCount: group.memberCount + 1 });
+        }
+        setFriends((prev) => prev.filter((f) => f.id !== friendId));
+      }
+    } catch {
+      setErrors((prev) => ({ ...prev, [friendId]: "An unexpected error occurred" }));
+    } finally {
+      setActionLoading((prev) => ({ ...prev, [friendId]: false }));
     }
-    setActionLoading((prev) => ({ ...prev, [friendId]: false }));
   };
 
   const handleRemoveMember = async (member: GroupMember) => {
     if (!confirm(`Remove ${member.user.name} from the group?`)) return;
     setActionLoading((prev) => ({ ...prev, [member.userId]: true }));
-    const result = await removeGroupMember(group.id, member.userId);
-    if (!result.success) {
+    try {
+      const result = await removeGroupMember(group.id, member.userId);
+      if (!result.success) {
+        setErrors((prev) => ({
+          ...prev,
+          [member.userId]: result.error ?? "Failed",
+        }));
+      } else {
+        onGroupUpdated({
+          members: group.members.filter((m) => m.userId !== member.userId),
+          memberCount: group.memberCount - 1,
+        });
+      }
+    } catch {
       setErrors((prev) => ({
         ...prev,
-        [member.userId]: result.error ?? "Failed",
+        [member.userId]: "An unexpected error occurred",
       }));
-    } else {
-      onGroupUpdated({
-        members: group.members.filter((m) => m.userId !== member.userId),
-        memberCount: group.memberCount - 1,
-      });
+    } finally {
+      setActionLoading((prev) => ({ ...prev, [member.userId]: false }));
     }
-    setActionLoading((prev) => ({ ...prev, [member.userId]: false }));
   };
 
   const handlePromote = async (member: GroupMember) => {
     if (!confirm(`Make ${member.user.name} an admin?`)) return;
     setActionLoading((prev) => ({ ...prev, [member.userId]: true }));
-    const result = await promoteToAdmin(group.id, member.userId);
-    if (!result.success) {
+    try {
+      const result = await promoteToAdmin(group.id, member.userId);
+      if (!result.success) {
+        setErrors((prev) => ({
+          ...prev,
+          [member.userId]: result.error ?? "Failed",
+        }));
+      } else {
+        onGroupUpdated({
+          members: group.members.map((m) =>
+            m.userId === member.userId ? { ...m, role: "ADMIN" } : m,
+          ),
+        });
+      }
+    } catch {
       setErrors((prev) => ({
         ...prev,
-        [member.userId]: result.error ?? "Failed",
+        [member.userId]: "An unexpected error occurred",
       }));
-    } else {
-      onGroupUpdated({
-        members: group.members.map((m) =>
-          m.userId === member.userId ? { ...m, role: "ADMIN" } : m,
-        ),
-      });
+    } finally {
+      setActionLoading((prev) => ({ ...prev, [member.userId]: false }));
     }
-    setActionLoading((prev) => ({ ...prev, [member.userId]: false }));
   };
 
   // ── Leave ─────────────────────────────────────────────────────────────────
@@ -256,6 +317,15 @@ export default function GroupSettingsPanel({
     if (!confirm("Leave this group?")) return;
     const userId = session?.user?.id;
     if (!userId) return;
+
+    // Prevent creator from leaving — they must delete or transfer ownership
+    if (userId === group.createdBy) {
+      alert(
+        "As the group creator, you cannot leave the group. Use 'Delete group' to remove it permanently.",
+      );
+      return;
+    }
+
     const result = await removeGroupMember(group.id, userId);
     if (result.success) router.push("/groups");
   };
@@ -265,10 +335,12 @@ export default function GroupSettingsPanel({
     if (!confirm("Permanently delete this group? This cannot be undone."))
       return;
     setIsDeletingGroup(true);
-    const result = await deleteGroup(group.id);
-    if (result.success) {
-      router.push("/groups");
-    } else {
+    try {
+      const result = await deleteGroup(group.id);
+      if (result.success) {
+        router.push("/groups");
+      }
+    } finally {
       setIsDeletingGroup(false);
     }
   };
@@ -704,13 +776,15 @@ export default function GroupSettingsPanel({
             Actions
           </p>
 
-          <button
-            onClick={handleLeave}
-            className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-(--color-coral-600) hover:bg-(--color-coral-50) transition-colors"
-          >
-            <LogOut className="size-4" />
-            Leave group
-          </button>
+          {session?.user?.id !== group.createdBy && (
+            <button
+              onClick={handleLeave}
+              className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-(--color-coral-600) hover:bg-(--color-coral-50) transition-colors"
+            >
+              <LogOut className="size-4" />
+              Leave group
+            </button>
+          )}
 
           {isAdmin && group.createdBy === session?.user?.id && (
             <button

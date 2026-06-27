@@ -17,14 +17,21 @@ export async function updateGroup(
   if (!membership)
     return { success: false, error: "Only admins can update group info" };
 
+  const updates: { name?: string; description?: string } = {};
+
+  if (data.name !== undefined) {
+    const name = data.name.trim();
+    if (!name) return { success: false, error: "Name cannot be empty" };
+    updates.name = name;
+  }
+
+  if (data.description !== undefined) {
+    updates.description = data.description.trim();
+  }
+
   await prisma.conversation.update({
     where: { id: conversationId },
-    data: {
-      ...(data.name ? { name: data.name.trim() } : {}),
-      ...(data.description !== undefined
-        ? { description: data.description.trim() }
-        : {}),
-    },
+    data: updates,
   });
 
   return { success: true };
