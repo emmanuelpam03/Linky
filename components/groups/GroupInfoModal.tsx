@@ -157,7 +157,7 @@ export default function GroupInfoModal({
       setIsSearching(false);
     };
     search();
-  }, [debouncedQuery]);
+  }, [debouncedQuery, group.id]);
 
   // ── Avatar ────────────────────────────────────────────────────────────────
   const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
