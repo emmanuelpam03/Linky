@@ -6,18 +6,28 @@ import {
   Info,
   Image as ImageIcon,
   FileText,
+  Link as LinkIcon,
   ShieldAlert,
   Trash2,
   Loader2,
+  Bell,
+  BellOff,
+  Eraser,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import type { ConversationDetail } from "@/types";
 import {
   getSharedMedia,
   getSharedFiles,
+  getSharedLinks,
 } from "@/app/actions/conversations/media";
 import { blockUser, getBlockStatus } from "@/app/actions/users/block";
 import { deleteConversationForSelf } from "@/app/actions/conversations/delete";
+import {
+  toggleMute,
+  getMuteStatus,
+  clearChat,
+} from "@/app/actions/conversations/settings";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 
@@ -29,8 +39,8 @@ type SharedFile = {
   fileSize: number | null;
   createdAt: Date;
 };
-
-type NavItem = "info" | "media" | "files";
+type SharedLink = { id: string; url: string; createdAt: Date };
+type NavItem = "info" | "media" | "files" | "links";
 
 type ChatInfoModalProps = {
   conversation: ConversationDetail;
@@ -44,6 +54,14 @@ function formatBytes(bytes: number | null): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+function formatDate(date: Date): string {
+  return new Intl.DateTimeFormat("en", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  }).format(new Date(date));
+}
+
 export default function ChatInfoModal({
   conversation,
   onClose,
@@ -51,40 +69,55 @@ export default function ChatInfoModal({
   const [nav, setNav] = useState<NavItem>("info");
   const [media, setMedia] = useState<SharedMedia[]>([]);
   const [files, setFiles] = useState<SharedFile[]>([]);
+  const [links, setLinks] = useState<SharedLink[]>([]);
   const [isLoadingMedia, setIsLoadingMedia] = useState(false);
   const [isLoadingFiles, setIsLoadingFiles] = useState(false);
+  const [isLoadingLinks, setIsLoadingLinks] = useState(false);
   const [iBlocked, setIBlocked] = useState(false);
   const [theyBlocked, setTheyBlocked] = useState(false);
   const [isBlocking, setIsBlocking] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isMuted, setIsMuted] = useState(false);
+  const [isTogglingMute, setIsTogglingMute] = useState(false);
+  const [isClearing, setIsClearing] = useState(false);
   const router = useRouter();
   const { otherUser } = conversation;
 
   useEffect(() => {
     if (!otherUser) return;
-    getBlockStatus(otherUser.id).then((status) => {
-      setIBlocked(status.iBlocked);
-      setTheyBlocked(status.theyBlocked);
+    Promise.all([
+      getBlockStatus(otherUser.id),
+      getMuteStatus(conversation.id),
+    ]).then(([blockStatus, muteStatus]) => {
+      setIBlocked(blockStatus.iBlocked);
+      setTheyBlocked(blockStatus.theyBlocked);
+      setIsMuted(muteStatus.isMuted);
     });
-  }, [otherUser]);
+  }, [otherUser, conversation.id]);
 
   useEffect(() => {
     const load = async () => {
       if (nav === "media" && media.length === 0) {
         setIsLoadingMedia(true);
-        const result = await getSharedMedia(conversation.id);
-        if (result.success) setMedia(result.data);
+        const r = await getSharedMedia(conversation.id);
+        if (r.success) setMedia(r.data);
         setIsLoadingMedia(false);
       }
       if (nav === "files" && files.length === 0) {
         setIsLoadingFiles(true);
-        const result = await getSharedFiles(conversation.id);
-        if (result.success) setFiles(result.data);
+        const r = await getSharedFiles(conversation.id);
+        if (r.success) setFiles(r.data);
         setIsLoadingFiles(false);
+      }
+      if (nav === "links" && links.length === 0) {
+        setIsLoadingLinks(true);
+        const r = await getSharedLinks(conversation.id);
+        if (r.success) setLinks(r.data);
+        setIsLoadingLinks(false);
       }
     };
     load();
-  }, [conversation.id, files.length, media.length, nav]);
+  }, [nav, conversation.id, media.length, files.length, links.length]);
 
   const handleBlock = async () => {
     if (!otherUser) return;
@@ -111,12 +144,28 @@ export default function ChatInfoModal({
   const handleDelete = async () => {
     if (!confirm("Delete this conversation? This cannot be undone.")) return;
     setIsDeleting(true);
-    const result = await deleteConversationForSelf(conversation.id);
-    if (result.success) {
+    const r = await deleteConversationForSelf(conversation.id);
+    if (r.success) {
       onClose();
       router.push("/chats");
     }
     setIsDeleting(false);
+  };
+
+  const handleToggleMute = async () => {
+    setIsTogglingMute(true);
+    const newMuted = !isMuted;
+    const r = await toggleMute(conversation.id, newMuted);
+    if (r.success) setIsMuted(newMuted);
+    setIsTogglingMute(false);
+  };
+
+  const handleClearChat = async () => {
+    if (!confirm("Clear all messages? This only affects your view.")) return;
+    setIsClearing(true);
+    await clearChat(conversation.id);
+    setIsClearing(false);
+    onClose();
   };
 
   const initials =
@@ -132,6 +181,7 @@ export default function ChatInfoModal({
     { id: "info", label: "Info", icon: <Info className="size-4" /> },
     { id: "media", label: "Media", icon: <ImageIcon className="size-4" /> },
     { id: "files", label: "Files", icon: <FileText className="size-4" /> },
+    { id: "links", label: "Links", icon: <LinkIcon className="size-4" /> },
   ];
 
   return (
@@ -165,7 +215,6 @@ export default function ChatInfoModal({
 
         {/* Right content */}
         <div className="flex flex-1 flex-col min-w-0">
-          {/* Modal header */}
           <div className="flex items-center justify-between border-b border-(--color-border-tertiary) px-5 py-4">
             <h2 className="text-sm font-semibold text-(--color-text-primary) capitalize">
               {nav}
@@ -179,10 +228,9 @@ export default function ChatInfoModal({
           </div>
 
           <div className="flex-1 overflow-y-auto">
-            {/* Info tab */}
+            {/* ── Info tab ────────────────────────────────────────────────── */}
             {nav === "info" && (
               <div>
-                {/* Profile header */}
                 <div className="flex flex-col items-center px-6 py-8 border-b border-(--color-border-tertiary)">
                   <Avatar style={{ width: 80, height: 80 }}>
                     {otherUser?.image && (
@@ -210,8 +258,56 @@ export default function ChatInfoModal({
                   )}
                 </div>
 
-                {/* Actions */}
-                <div className="px-5 py-4 space-y-1">
+                {/* Settings */}
+                <div className="px-5 py-3 space-y-1">
+                  {/* Mute toggle */}
+                  <div className="flex items-center justify-between rounded-lg px-3 py-2.5 hover:bg-(--color-background-secondary) transition-colors">
+                    <div className="flex items-center gap-3">
+                      {isMuted ? (
+                        <BellOff className="size-4 text-(--color-text-secondary)" />
+                      ) : (
+                        <Bell className="size-4 text-(--color-text-secondary)" />
+                      )}
+                      <span className="text-sm text-(--color-text-primary)">
+                        {isMuted ? "Notifications off" : "Notifications on"}
+                      </span>
+                    </div>
+                    <button
+                      onClick={handleToggleMute}
+                      disabled={isTogglingMute}
+                      className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors ${
+                        isMuted
+                          ? "bg-(--color-background-tertiary)"
+                          : "bg-(--color-brand-400)"
+                      }`}
+                    >
+                      {isTogglingMute ? (
+                        <Loader2 className="size-3 animate-spin m-auto" />
+                      ) : (
+                        <span
+                          className={`pointer-events-none inline-block size-4 rounded-full bg-white shadow transform transition-transform ${
+                            isMuted ? "translate-x-0" : "translate-x-4"
+                          }`}
+                        />
+                      )}
+                    </button>
+                  </div>
+
+                  {/* Clear chat */}
+                  <button
+                    onClick={handleClearChat}
+                    disabled={isClearing}
+                    className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-(--color-text-secondary) hover:bg-(--color-background-secondary) transition-colors disabled:opacity-50"
+                  >
+                    {isClearing ? (
+                      <Loader2 className="size-4 animate-spin" />
+                    ) : (
+                      <Eraser className="size-4" />
+                    )}
+                    Clear chat
+                  </button>
+
+                  {/* Block */}
                   <button
                     onClick={handleBlock}
                     disabled={isBlocking || theyBlocked}
@@ -225,6 +321,7 @@ export default function ChatInfoModal({
                     {iBlocked ? "Unblock user" : "Block user"}
                   </button>
 
+                  {/* Delete */}
                   <button
                     onClick={handleDelete}
                     disabled={isDeleting}
@@ -241,7 +338,7 @@ export default function ChatInfoModal({
               </div>
             )}
 
-            {/* Media tab */}
+            {/* ── Media tab ───────────────────────────────────────────────── */}
             {nav === "media" && (
               <div className="p-4">
                 {isLoadingMedia ? (
@@ -279,7 +376,7 @@ export default function ChatInfoModal({
               </div>
             )}
 
-            {/* Files tab */}
+            {/* ── Files tab ───────────────────────────────────────────────── */}
             {nav === "files" && (
               <div className="p-4">
                 {isLoadingFiles ? (
@@ -313,6 +410,46 @@ export default function ChatInfoModal({
                               {formatBytes(f.fileSize)}
                             </p>
                           )}
+                        </div>
+                      </a>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ── Links tab ───────────────────────────────────────────────── */}
+            {nav === "links" && (
+              <div className="p-4">
+                {isLoadingLinks ? (
+                  <div className="flex justify-center py-12">
+                    <Loader2 className="size-6 animate-spin text-(--color-text-tertiary)" />
+                  </div>
+                ) : links.length === 0 ? (
+                  <div className="flex flex-col items-center py-12 gap-3">
+                    <LinkIcon className="size-10 text-(--color-text-tertiary)" />
+                    <p className="text-sm text-(--color-text-tertiary)">
+                      No links shared yet
+                    </p>
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-2">
+                    {links.map((l) => (
+                      <a
+                        key={l.id}
+                        href={l.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-3 rounded-xl border border-(--color-border-tertiary) px-4 py-3 hover:bg-(--color-background-secondary) transition-colors"
+                      >
+                        <LinkIcon className="size-5 shrink-0 text-(--color-brand-400)" />
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm text-(--color-text-primary)">
+                            {l.url}
+                          </p>
+                          <p className="text-xs text-(--color-text-tertiary)">
+                            {formatDate(l.createdAt)}
+                          </p>
                         </div>
                       </a>
                     ))}

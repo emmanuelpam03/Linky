@@ -7,16 +7,20 @@ import {
   Image as ImageIcon,
   FileText,
   Users,
+  Link as LinkIcon,
   Loader2,
   LogOut,
   Trash2,
   UserPlus,
-  Shield,
-  UserMinus,
   Upload,
   Pencil,
   Check,
   Search,
+  Bell,
+  BellOff,
+  Eraser,
+  Shield,
+  UserMinus,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -24,6 +28,7 @@ import type { GroupDetail, GroupMember } from "@/types";
 import {
   getSharedMedia,
   getSharedFiles,
+  getSharedLinks,
 } from "@/app/actions/conversations/media";
 import {
   addGroupMember,
@@ -36,6 +41,7 @@ import {
   deleteGroup,
 } from "@/app/actions/groups/update";
 import { searchUsersForGroup } from "@/app/actions/users/search";
+import { toggleMute, clearChat } from "@/app/actions/conversations/settings";
 import { useSession } from "@/lib/auth-client";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
@@ -49,15 +55,14 @@ type SharedFile = {
   fileSize: number | null;
   createdAt: Date;
 };
-
+type SharedLink = { id: string; url: string; createdAt: Date };
 type UserResult = {
   id: string;
   name: string;
   username: string;
   image: string | null;
 };
-
-type NavItem = "info" | "members" | "media" | "files";
+type NavItem = "info" | "members" | "media" | "files" | "links";
 
 type GroupInfoModalProps = {
   group: GroupDetail;
@@ -72,6 +77,14 @@ function formatBytes(bytes: number | null): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+function formatDate(date: Date): string {
+  return new Intl.DateTimeFormat("en", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  }).format(new Date(date));
+}
+
 export default function GroupInfoModal({
   group,
   onClose,
@@ -80,21 +93,25 @@ export default function GroupInfoModal({
   const [nav, setNav] = useState<NavItem>("info");
   const [media, setMedia] = useState<SharedMedia[]>([]);
   const [files, setFiles] = useState<SharedFile[]>([]);
+  const [links, setLinks] = useState<SharedLink[]>([]);
   const [isLoadingMedia, setIsLoadingMedia] = useState(false);
   const [isLoadingFiles, setIsLoadingFiles] = useState(false);
+  const [isLoadingLinks, setIsLoadingLinks] = useState(false);
 
-  // Member actions
   const [actionLoading, setActionLoading] = useState<Record<string, boolean>>(
     {},
   );
   const [memberErrors, setMemberErrors] = useState<Record<string, string>>({});
 
   // Add member search
-  const [searchQuery, setSearchQuery] = useState("");
-  const [searchResults, setSearchResults] = useState<UserResult[]>([]);
-  const [isSearching, setIsSearching] = useState(false);
+  const [addQuery, setAddQuery] = useState("");
+  const [addResults, setAddResults] = useState<UserResult[]>([]);
+  const [isAddSearching, setIsAddSearching] = useState(false);
   const [addErrors, setAddErrors] = useState<Record<string, string>>({});
-  const debouncedQuery = useDebounce(searchQuery, 400);
+  const debouncedAddQuery = useDebounce(addQuery, 400);
+
+  // Filter existing members
+  const [filterQuery, setFilterQuery] = useState("");
 
   // Edit group info (admin only)
   const [isEditingName, setIsEditingName] = useState(false);
@@ -112,7 +129,10 @@ export default function GroupInfoModal({
   const [avatarError, setAvatarError] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Leave / delete
+  // Mute / clear / leave / delete
+  const [isMuted, setIsMuted] = useState(group.isMuted);
+  const [isTogglingMute, setIsTogglingMute] = useState(false);
+  const [isClearing, setIsClearing] = useState(false);
   const [isDeletingGroup, setIsDeletingGroup] = useState(false);
   const [isLeaving, setIsLeaving] = useState(false);
 
@@ -120,47 +140,63 @@ export default function GroupInfoModal({
   const router = useRouter();
   const isAdmin = group.currentUserRole === "ADMIN";
   const groupRef = useRef(group);
-
   useEffect(() => {
     groupRef.current = group;
   }, [group]);
 
-  // Load media/files on nav change
+  // Load media/files/links on nav change
   useEffect(() => {
     const load = async () => {
       if (nav === "media" && media.length === 0) {
         setIsLoadingMedia(true);
-        const result = await getSharedMedia(group.id);
-        if (result.success) setMedia(result.data);
+        const r = await getSharedMedia(group.id);
+        if (r.success) setMedia(r.data);
         setIsLoadingMedia(false);
       }
       if (nav === "files" && files.length === 0) {
         setIsLoadingFiles(true);
-        const result = await getSharedFiles(group.id);
-        if (result.success) setFiles(result.data);
+        const r = await getSharedFiles(group.id);
+        if (r.success) setFiles(r.data);
         setIsLoadingFiles(false);
+      }
+      if (nav === "links" && links.length === 0) {
+        setIsLoadingLinks(true);
+        const r = await getSharedLinks(group.id);
+        if (r.success) setLinks(r.data);
+        setIsLoadingLinks(false);
       }
     };
     load();
-  }, [files.length, group.id, media.length, nav]);
+  }, [nav, group.id, media.length, files.length, links.length]);
 
-  // Search users when query changes (with stale-response guard)
+  // Search users to add
   useEffect(() => {
     let cancelled = false;
     const search = async () => {
-      if (!debouncedQuery.trim()) {
-        setSearchResults([]);
+      if (!debouncedAddQuery.trim()) {
+        setAddResults([]);
         return;
       }
-      setIsSearching(true);
-      const result = await searchUsersForGroup(debouncedQuery, group.id);
+      setIsAddSearching(true);
+      const r = await searchUsersForGroup(debouncedAddQuery, group.id);
       if (cancelled) return;
-      if (result.success) setSearchResults(result.data);
-      setIsSearching(false);
+      if (r.success) setAddResults(r.data);
+      setIsAddSearching(false);
     };
     search();
-    return () => { cancelled = true; };
-  }, [debouncedQuery, group.id]);
+    return () => {
+      cancelled = true;
+    };
+  }, [debouncedAddQuery, group.id]);
+
+  // Filtered members
+  const filteredMembers = filterQuery.trim()
+    ? group.members.filter(
+        (m) =>
+          m.user.name.toLowerCase().includes(filterQuery.toLowerCase()) ||
+          m.user.username.toLowerCase().includes(filterQuery.toLowerCase()),
+      )
+    : group.members;
 
   // ── Avatar ────────────────────────────────────────────────────────────────
   const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -171,12 +207,12 @@ export default function GroupInfoModal({
     try {
       const formData = new FormData();
       formData.append("avatar", file);
-      const result = await uploadGroupAvatar(group.id, formData);
-      if (!result.success) {
-        setAvatarError(result.error ?? "Upload failed");
+      const r = await uploadGroupAvatar(group.id, formData);
+      if (!r.success) {
+        setAvatarError(r.error ?? "Upload failed");
       } else {
-        setLocalAvatar(result.imageUrl);
-        onGroupUpdated({ image: result.imageUrl });
+        setLocalAvatar(r.imageUrl);
+        onGroupUpdated({ image: r.imageUrl });
       }
     } catch {
       setAvatarError("Upload failed");
@@ -194,9 +230,9 @@ export default function GroupInfoModal({
     setIsSavingName(true);
     setNameError("");
     try {
-      const result = await updateGroup(group.id, { name: nameValue.trim() });
-      if (!result.success) {
-        setNameError(result.error ?? "Failed to update name");
+      const r = await updateGroup(group.id, { name: nameValue.trim() });
+      if (!r.success) {
+        setNameError(r.error ?? "Failed");
       } else {
         onGroupUpdated({ name: nameValue.trim() });
         setIsEditingName(false);
@@ -213,11 +249,9 @@ export default function GroupInfoModal({
     setIsSavingDesc(true);
     setDescError("");
     try {
-      const result = await updateGroup(group.id, {
-        description: descValue.trim(),
-      });
-      if (!result.success) {
-        setDescError(result.error ?? "Failed to update description");
+      const r = await updateGroup(group.id, { description: descValue.trim() });
+      if (!r.success) {
+        setDescError(r.error ?? "Failed");
       } else {
         onGroupUpdated({ description: descValue.trim() });
         setIsEditingDesc(false);
@@ -229,16 +263,34 @@ export default function GroupInfoModal({
     }
   };
 
+  // ── Mute ──────────────────────────────────────────────────────────────────
+  const handleToggleMute = async () => {
+    setIsTogglingMute(true);
+    const newMuted = !isMuted;
+    const r = await toggleMute(group.id, newMuted);
+    if (r.success) {
+      setIsMuted(newMuted);
+      onGroupUpdated({ isMuted: newMuted });
+    }
+    setIsTogglingMute(false);
+  };
+
+  // ── Clear chat ────────────────────────────────────────────────────────────
+  const handleClearChat = async () => {
+    if (!confirm("Clear all messages? This only affects your view.")) return;
+    setIsClearing(true);
+    await clearChat(group.id);
+    setIsClearing(false);
+    onClose();
+  };
+
   // ── Add member ────────────────────────────────────────────────────────────
   const handleAddMember = async (user: UserResult) => {
     setActionLoading((prev) => ({ ...prev, [user.id]: true }));
     try {
-      const result = await addGroupMember(groupRef.current.id, user.id);
-      if (!result.success) {
-        setAddErrors((prev) => ({
-          ...prev,
-          [user.id]: result.error ?? "Failed",
-        }));
+      const r = await addGroupMember(groupRef.current.id, user.id);
+      if (!r.success) {
+        setAddErrors((prev) => ({ ...prev, [user.id]: r.error ?? "Failed" }));
       } else {
         const newMember: GroupMember = {
           id: `new-${user.id}`,
@@ -251,8 +303,8 @@ export default function GroupInfoModal({
           members: [...groupRef.current.members, newMember],
           memberCount: groupRef.current.memberCount + 1,
         });
-        setSearchResults((prev) => prev.filter((u) => u.id !== user.id));
-        setSearchQuery("");
+        setAddResults((prev) => prev.filter((u) => u.id !== user.id));
+        setAddQuery("");
       }
     } catch {
       setAddErrors((prev) => ({ ...prev, [user.id]: "Unexpected error" }));
@@ -266,14 +318,11 @@ export default function GroupInfoModal({
     if (!confirm(`Remove ${member.user.name} from the group?`)) return;
     setActionLoading((prev) => ({ ...prev, [member.userId]: true }));
     try {
-      const result = await removeGroupMember(
-        groupRef.current.id,
-        member.userId,
-      );
-      if (!result.success) {
+      const r = await removeGroupMember(groupRef.current.id, member.userId);
+      if (!r.success) {
         setMemberErrors((prev) => ({
           ...prev,
-          [member.userId]: result.error ?? "Failed",
+          [member.userId]: r.error ?? "Failed",
         }));
       } else {
         onGroupUpdated({
@@ -298,11 +347,11 @@ export default function GroupInfoModal({
     if (!confirm(`Make ${member.user.name} an admin?`)) return;
     setActionLoading((prev) => ({ ...prev, [member.userId]: true }));
     try {
-      const result = await promoteToAdmin(groupRef.current.id, member.userId);
-      if (!result.success) {
+      const r = await promoteToAdmin(groupRef.current.id, member.userId);
+      if (!r.success) {
         setMemberErrors((prev) => ({
           ...prev,
-          [member.userId]: result.error ?? "Failed",
+          [member.userId]: r.error ?? "Failed",
         }));
       } else {
         onGroupUpdated({
@@ -328,8 +377,8 @@ export default function GroupInfoModal({
     if (!userId) return;
     setIsLeaving(true);
     try {
-      const result = await removeGroupMember(group.id, userId);
-      if (result.success) {
+      const r = await removeGroupMember(group.id, userId);
+      if (r.success) {
         onClose();
         router.push("/groups");
       }
@@ -344,8 +393,8 @@ export default function GroupInfoModal({
       return;
     setIsDeletingGroup(true);
     try {
-      const result = await deleteGroup(group.id);
-      if (result.success) {
+      const r = await deleteGroup(group.id);
+      if (r.success) {
         onClose();
         router.push("/groups");
       }
@@ -368,13 +417,14 @@ export default function GroupInfoModal({
     { id: "members", label: "Members", icon: <Users className="size-4" /> },
     { id: "media", label: "Media", icon: <ImageIcon className="size-4" /> },
     { id: "files", label: "Files", icon: <FileText className="size-4" /> },
+    { id: "links", label: "Links", icon: <LinkIcon className="size-4" /> },
   ];
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
       <div
         className="w-full max-w-2xl rounded-2xl border border-(--color-border-tertiary) bg-(--color-background-primary) shadow-xl overflow-hidden flex"
-        style={{ height: 560 }}
+        style={{ height: 600 }}
       >
         {/* Left nav */}
         <div className="w-48 shrink-0 border-r border-(--color-border-tertiary) bg-(--color-background-secondary) p-3 flex flex-col">
@@ -398,7 +448,6 @@ export default function GroupInfoModal({
             ))}
           </div>
 
-          {/* Leave / delete at bottom of nav */}
           <div className="mt-auto flex flex-col gap-0.5 pt-3 border-t border-(--color-border-tertiary)">
             {session?.user?.id !== group.createdBy && (
               <button
@@ -446,186 +495,377 @@ export default function GroupInfoModal({
           </div>
 
           <div className="flex-1 overflow-y-auto">
-            {/* Info tab */}
+            {/* ── Info tab ────────────────────────────────────────────────── */}
             {nav === "info" && (
-              <div className="flex flex-col items-center px-6 py-8">
-                <div className="relative">
-                  <Avatar style={{ width: 80, height: 80 }}>
-                    {displayAvatar && (
-                      <AvatarImage src={displayAvatar} alt={group.name} />
-                    )}
-                    <AvatarFallback className="bg-(--color-background-tertiary) text-2xl font-semibold text-(--color-text-secondary)">
-                      {initials}
-                    </AvatarFallback>
-                  </Avatar>
-                  {isAdmin && (
-                    <>
-                      <input
-                        ref={fileInputRef}
-                        type="file"
-                        accept="image/jpeg,image/png,image/webp"
-                        className="hidden"
-                        onChange={handleAvatarChange}
-                      />
-                      <button
-                        onClick={() => fileInputRef.current?.click()}
-                        disabled={isUploadingAvatar}
-                        className="absolute -bottom-1 -right-1 flex size-7 items-center justify-center rounded-full bg-(--color-brand-400) text-white shadow-sm hover:bg-(--color-brand-600) transition-colors"
-                      >
-                        {isUploadingAvatar ? (
-                          <Loader2 className="size-3.5 animate-spin" />
-                        ) : (
-                          <Upload className="size-3.5" />
-                        )}
-                      </button>
-                    </>
-                  )}
-                </div>
-                {avatarError && (
-                  <p className="mt-1 text-xs text-(--color-coral-400)">
-                    {avatarError}
-                  </p>
-                )}
-
-                {/* Name */}
-                <div className="mt-4 flex items-center gap-2 justify-center w-full px-8">
-                  {isEditingName ? (
-                    <div className="flex items-center gap-1 w-full">
-                      <input
-                        autoFocus
-                        value={nameValue}
-                        onChange={(e) => setNameValue(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") handleSaveName();
-                          if (e.key === "Escape") setIsEditingName(false);
-                        }}
-                        className="flex-1 rounded-md border border-(--color-border-secondary) bg-transparent px-3 py-1.5 text-base text-(--color-text-primary) focus:outline-none focus:border-(--color-brand-400)"
-                      />
-                      <button
-                        onClick={handleSaveName}
-                        disabled={isSavingName}
-                        className="shrink-0 text-(--color-brand-400)"
-                      >
-                        {isSavingName ? (
-                          <Loader2 className="size-4 animate-spin" />
-                        ) : (
-                          <Check className="size-4" />
-                        )}
-                      </button>
-                      <button
-                        onClick={() => setIsEditingName(false)}
-                        className="shrink-0 text-(--color-text-tertiary)"
-                      >
-                        <X className="size-4" />
-                      </button>
-                    </div>
-                  ) : (
-                    <>
-                      <h3 className="text-lg font-semibold text-(--color-text-primary)">
-                        {group.name}
-                      </h3>
-                      {isAdmin && (
-                        <button
-                          onClick={() => setIsEditingName(true)}
-                          className="text-(--color-text-tertiary) hover:text-(--color-text-primary)"
-                        >
-                          <Pencil className="size-4" />
-                        </button>
+              <div>
+                <div className="flex flex-col items-center px-6 py-6 border-b border-(--color-border-tertiary)">
+                  <div className="relative">
+                    <Avatar style={{ width: 80, height: 80 }}>
+                      {displayAvatar && (
+                        <AvatarImage src={displayAvatar} alt={group.name} />
                       )}
-                    </>
-                  )}
-                </div>
-                {nameError && (
-                  <p className="text-xs text-(--color-coral-400) mt-1">
-                    {nameError}
-                  </p>
-                )}
-
-                <p className="text-sm text-(--color-text-tertiary) mt-1">
-                  Group · {group.memberCount} members
-                </p>
-
-                {/* Description */}
-                <div className="mt-3 w-full px-4">
-                  {isEditingDesc ? (
-                    <div className="flex flex-col gap-1">
-                      <textarea
-                        autoFocus
-                        value={descValue}
-                        onChange={(e) => setDescValue(e.target.value)}
-                        rows={3}
-                        className="w-full rounded-md border border-(--color-border-secondary) bg-transparent px-3 py-2 text-sm text-(--color-text-primary) focus:outline-none focus:border-(--color-brand-400) resize-none"
-                      />
-                      {descError && (
-                        <p className="text-xs text-(--color-coral-400)">
-                          {descError}
-                        </p>
-                      )}
-                      <div className="flex justify-end gap-2">
+                      <AvatarFallback className="bg-(--color-background-tertiary) text-2xl font-semibold text-(--color-text-secondary)">
+                        {initials}
+                      </AvatarFallback>
+                    </Avatar>
+                    {isAdmin && (
+                      <>
+                        <input
+                          ref={fileInputRef}
+                          type="file"
+                          accept="image/jpeg,image/png,image/webp"
+                          className="hidden"
+                          onChange={handleAvatarChange}
+                        />
                         <button
-                          onClick={handleSaveDesc}
-                          disabled={isSavingDesc}
-                          className="text-sm text-(--color-brand-400) font-medium"
+                          onClick={() => fileInputRef.current?.click()}
+                          disabled={isUploadingAvatar}
+                          className="absolute -bottom-1 -right-1 flex size-7 items-center justify-center rounded-full bg-(--color-brand-400) text-white shadow-sm hover:bg-(--color-brand-600) transition-colors"
                         >
-                          {isSavingDesc ? (
+                          {isUploadingAvatar ? (
                             <Loader2 className="size-3.5 animate-spin" />
                           ) : (
-                            "Save"
+                            <Upload className="size-3.5" />
+                          )}
+                        </button>
+                      </>
+                    )}
+                  </div>
+                  {avatarError && (
+                    <p className="mt-1 text-xs text-(--color-coral-400)">
+                      {avatarError}
+                    </p>
+                  )}
+
+                  {/* Name */}
+                  <div className="mt-4 flex items-center gap-2 justify-center w-full px-8">
+                    {isEditingName ? (
+                      <div className="flex items-center gap-1 w-full">
+                        <input
+                          autoFocus
+                          value={nameValue}
+                          onChange={(e) => setNameValue(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") handleSaveName();
+                            if (e.key === "Escape") setIsEditingName(false);
+                          }}
+                          className="flex-1 rounded-md border border-(--color-border-secondary) bg-transparent px-3 py-1.5 text-base text-(--color-text-primary) focus:outline-none focus:border-(--color-brand-400)"
+                        />
+                        <button
+                          onClick={handleSaveName}
+                          disabled={isSavingName}
+                          className="shrink-0 text-(--color-brand-400)"
+                        >
+                          {isSavingName ? (
+                            <Loader2 className="size-4 animate-spin" />
+                          ) : (
+                            <Check className="size-4" />
                           )}
                         </button>
                         <button
-                          onClick={() => setIsEditingDesc(false)}
-                          className="text-sm text-(--color-text-tertiary)"
+                          onClick={() => setIsEditingName(false)}
+                          className="shrink-0 text-(--color-text-tertiary)"
                         >
-                          Cancel
+                          <X className="size-4" />
                         </button>
                       </div>
-                    </div>
-                  ) : (
-                    <div className="flex items-start gap-1 justify-center">
-                      <p className="text-center text-sm text-(--color-text-secondary) leading-relaxed">
-                        {group.description ||
-                          (isAdmin ? "Add a description..." : "No description")}
-                      </p>
-                      {isAdmin && (
-                        <button
-                          onClick={() => setIsEditingDesc(true)}
-                          className="shrink-0 text-(--color-text-tertiary) hover:text-(--color-text-primary) mt-0.5"
-                        >
-                          <Pencil className="size-3.5" />
-                        </button>
-                      )}
-                    </div>
+                    ) : (
+                      <>
+                        <h3 className="text-lg font-semibold text-(--color-text-primary)">
+                          {group.name}
+                        </h3>
+                        {isAdmin && (
+                          <button
+                            onClick={() => setIsEditingName(true)}
+                            className="text-(--color-text-tertiary) hover:text-(--color-text-primary)"
+                          >
+                            <Pencil className="size-4" />
+                          </button>
+                        )}
+                      </>
+                    )}
+                  </div>
+                  {nameError && (
+                    <p className="text-xs text-(--color-coral-400) mt-1">
+                      {nameError}
+                    </p>
                   )}
+
+                  <p className="text-sm text-(--color-text-tertiary) mt-1">
+                    Group · {group.memberCount} members
+                  </p>
+
+                  {/* Description */}
+                  <div className="mt-3 w-full px-4">
+                    {isEditingDesc ? (
+                      <div className="flex flex-col gap-1">
+                        <textarea
+                          autoFocus
+                          value={descValue}
+                          onChange={(e) => setDescValue(e.target.value)}
+                          rows={3}
+                          className="w-full rounded-md border border-(--color-border-secondary) bg-transparent px-3 py-2 text-sm text-(--color-text-primary) focus:outline-none focus:border-(--color-brand-400) resize-none"
+                        />
+                        {descError && (
+                          <p className="text-xs text-(--color-coral-400)">
+                            {descError}
+                          </p>
+                        )}
+                        <div className="flex justify-end gap-2">
+                          <button
+                            onClick={handleSaveDesc}
+                            disabled={isSavingDesc}
+                            className="text-sm text-(--color-brand-400) font-medium"
+                          >
+                            {isSavingDesc ? (
+                              <Loader2 className="size-3.5 animate-spin" />
+                            ) : (
+                              "Save"
+                            )}
+                          </button>
+                          <button
+                            onClick={() => setIsEditingDesc(false)}
+                            className="text-sm text-(--color-text-tertiary)"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex items-start gap-1 justify-center">
+                        <p className="text-center text-sm text-(--color-text-secondary) leading-relaxed">
+                          {group.description ||
+                            (isAdmin
+                              ? "Add a description..."
+                              : "No description")}
+                        </p>
+                        {isAdmin && (
+                          <button
+                            onClick={() => setIsEditingDesc(true)}
+                            className="shrink-0 text-(--color-text-tertiary) hover:text-(--color-text-primary) mt-0.5"
+                          >
+                            <Pencil className="size-3.5" />
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Settings rows */}
+                <div className="px-5 py-3 space-y-1">
+                  {/* Mute toggle */}
+                  <div className="flex items-center justify-between rounded-lg px-3 py-2.5 hover:bg-(--color-background-secondary) transition-colors">
+                    <div className="flex items-center gap-3">
+                      {isMuted ? (
+                        <BellOff className="size-4 text-(--color-text-secondary)" />
+                      ) : (
+                        <Bell className="size-4 text-(--color-text-secondary)" />
+                      )}
+                      <span className="text-sm text-(--color-text-primary)">
+                        {isMuted ? "Notifications off" : "Notifications on"}
+                      </span>
+                    </div>
+                    <button
+                      onClick={handleToggleMute}
+                      disabled={isTogglingMute}
+                      className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors ${
+                        isMuted
+                          ? "bg-(--color-background-tertiary)"
+                          : "bg-(--color-brand-400)"
+                      }`}
+                    >
+                      {isTogglingMute ? (
+                        <Loader2 className="size-3 animate-spin m-auto" />
+                      ) : (
+                        <span
+                          className={`pointer-events-none inline-block size-4 rounded-full bg-white shadow transform transition-transform ${
+                            isMuted ? "translate-x-0" : "translate-x-4"
+                          }`}
+                        />
+                      )}
+                    </button>
+                  </div>
+
+                  {/* Clear chat */}
+                  <button
+                    onClick={handleClearChat}
+                    disabled={isClearing}
+                    className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-(--color-text-secondary) hover:bg-(--color-background-secondary) transition-colors disabled:opacity-50"
+                  >
+                    {isClearing ? (
+                      <Loader2 className="size-4 animate-spin" />
+                    ) : (
+                      <Eraser className="size-4" />
+                    )}
+                    Clear chat
+                  </button>
+                </div>
+
+                {/* Created by / date */}
+                <div className="px-5 py-4 border-t border-(--color-border-tertiary)">
+                  <p className="text-xs font-medium text-(--color-text-tertiary) uppercase tracking-wide mb-2">
+                    Created by
+                  </p>
+                  <p className="text-sm font-medium text-(--color-text-primary)">
+                    {group.creator.name}
+                  </p>
+                  <p className="text-xs text-(--color-text-secondary)">
+                    @{group.creator.username}
+                  </p>
+                  <p className="mt-1 text-xs text-(--color-text-tertiary)">
+                    {formatDate(group.createdAt)}
+                  </p>
                 </div>
               </div>
             )}
 
-            {/* Members tab */}
+            {/* ── Members tab ─────────────────────────────────────────────── */}
             {nav === "members" && (
-              <div className="p-4">
-                {/* Search to add */}
-                <div className="mb-4">
+              <div className="p-4 space-y-4">
+                {/* Search existing members */}
+                <div>
+                  <p className="text-xs font-medium text-(--color-text-tertiary) uppercase tracking-wide mb-2">
+                    Search members
+                  </p>
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-(--color-text-tertiary)" />
                     <input
                       type="text"
-                      placeholder="Search by name or username to add..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder="Filter members..."
+                      value={filterQuery}
+                      onChange={(e) => setFilterQuery(e.target.value)}
+                      className="w-full rounded-lg border border-(--color-border-secondary) bg-transparent pl-9 pr-3 py-2 text-sm text-(--color-text-primary) placeholder:text-(--color-text-tertiary) focus:outline-none focus:border-(--color-brand-400)"
+                    />
+                  </div>
+                </div>
+
+                {/* Member list */}
+                <div>
+                  <p className="text-xs font-medium text-(--color-text-tertiary) uppercase tracking-wide mb-2">
+                    {filteredMembers.length} of {group.memberCount} members
+                  </p>
+                  <div className="space-y-1">
+                    {filteredMembers.map((member) => {
+                      const mi = member.user.name
+                        .split(" ")
+                        .map((s) => s[0])
+                        .filter(Boolean)
+                        .slice(0, 2)
+                        .join("")
+                        .toUpperCase();
+                      const isCreator = member.userId === group.createdBy;
+                      const isCurrentUser = member.userId === session?.user?.id;
+                      const error = memberErrors[member.userId];
+                      const loading = actionLoading[member.userId];
+
+                      return (
+                        <div
+                          key={member.id}
+                          className="flex items-center gap-2 rounded-lg px-2 py-2 hover:bg-(--color-background-secondary)"
+                        >
+                          <Avatar size="sm">
+                            {member.user.image && (
+                              <AvatarImage
+                                src={member.user.image}
+                                alt={member.user.name}
+                              />
+                            )}
+                            <AvatarFallback className="text-[10px] bg-(--color-brand-50) text-(--color-brand-900)">
+                              {mi}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <p className="text-xs font-medium text-(--color-text-primary) truncate">
+                                {member.user.name}{" "}
+                                {isCurrentUser && (
+                                  <span className="text-(--color-text-tertiary)">
+                                    (you)
+                                  </span>
+                                )}
+                              </p>
+                              {member.role === "ADMIN" && (
+                                <Badge
+                                  variant="outline"
+                                  className="text-[9px] px-1 py-0 border-(--color-brand-200) text-(--color-brand-600)"
+                                >
+                                  Admin
+                                </Badge>
+                              )}
+                              {isCreator && (
+                                <Badge
+                                  variant="outline"
+                                  className="text-[9px] px-1 py-0 border-(--color-text-tertiary) text-(--color-text-tertiary)"
+                                >
+                                  Creator
+                                </Badge>
+                              )}
+                            </div>
+                            {error && (
+                              <p className="text-[10px] text-(--color-coral-400)">
+                                {error}
+                              </p>
+                            )}
+                          </div>
+                          {isAdmin && !isCreator && !isCurrentUser && (
+                            <div className="flex items-center gap-2 shrink-0">
+                              {member.role !== "ADMIN" && (
+                                <button
+                                  onClick={() => handlePromote(member)}
+                                  disabled={loading}
+                                  className="text-xs text-(--color-brand-400) hover:underline disabled:opacity-50"
+                                >
+                                  {loading ? (
+                                    <Loader2 className="size-3 animate-spin" />
+                                  ) : (
+                                    "Make admin"
+                                  )}
+                                </button>
+                              )}
+                              <button
+                                onClick={() => handleRemoveMember(member)}
+                                disabled={loading}
+                                className="text-xs text-(--color-coral-600) hover:underline disabled:opacity-50"
+                              >
+                                {loading ? (
+                                  <Loader2 className="size-3 animate-spin" />
+                                ) : (
+                                  "Remove"
+                                )}
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Add new members */}
+                <div className="border-t border-(--color-border-tertiary) pt-4">
+                  <p className="text-xs font-medium text-(--color-text-tertiary) uppercase tracking-wide mb-2">
+                    Add people
+                  </p>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-(--color-text-tertiary)" />
+                    <input
+                      type="text"
+                      placeholder="Search by name or username..."
+                      value={addQuery}
+                      onChange={(e) => setAddQuery(e.target.value)}
                       className="w-full rounded-lg border border-(--color-border-secondary) bg-transparent pl-9 pr-3 py-2 text-sm text-(--color-text-primary) placeholder:text-(--color-text-tertiary) focus:outline-none focus:border-(--color-brand-400)"
                     />
                   </div>
 
-                  {/* Search results */}
-                  {(isSearching || searchResults.length > 0) && (
+                  {(isAddSearching || addResults.length > 0) && (
                     <div className="mt-1 rounded-xl border border-(--color-border-tertiary) overflow-hidden">
-                      {isSearching ? (
+                      {isAddSearching ? (
                         <div className="flex justify-center py-3">
                           <Loader2 className="size-4 animate-spin text-(--color-text-tertiary)" />
                         </div>
                       ) : (
-                        searchResults.map((user) => {
+                        addResults.map((user) => {
                           const ui = user.name
                             .split(" ")
                             .map((s) => s[0])
@@ -662,14 +902,13 @@ export default function GroupInfoModal({
                                 <button
                                   onClick={() => handleAddMember(user)}
                                   disabled={actionLoading[user.id]}
-                                  className="flex items-center gap-1 text-xs text-(--color-brand-400) hover:underline shrink-0"
+                                  className="text-xs text-(--color-brand-400) hover:underline shrink-0 disabled:opacity-50"
                                 >
                                   {actionLoading[user.id] ? (
                                     <Loader2 className="size-3 animate-spin" />
                                   ) : (
-                                    <UserPlus className="size-3" />
+                                    "Add"
                                   )}
-                                  Add
                                 </button>
                               </div>
                               {addError && (
@@ -684,107 +923,10 @@ export default function GroupInfoModal({
                     </div>
                   )}
                 </div>
-
-                {/* Member list */}
-                <p className="text-xs font-medium text-(--color-text-tertiary) uppercase tracking-wide mb-2">
-                  {group.memberCount} members
-                </p>
-                <div className="space-y-1">
-                  {group.members.map((member) => {
-                    const mi = member.user.name
-                      .split(" ")
-                      .map((s) => s[0])
-                      .filter(Boolean)
-                      .slice(0, 2)
-                      .join("")
-                      .toUpperCase();
-                    const isCreator = member.userId === group.createdBy;
-                    const error = memberErrors[member.userId];
-                    const isCurrentUser = member.userId === session?.user?.id;
-
-                    return (
-                      <div
-                        key={member.id}
-                        className="flex items-center gap-2 rounded-lg px-2 py-2 hover:bg-(--color-background-secondary)"
-                      >
-                        <Avatar size="sm">
-                          {member.user.image && (
-                            <AvatarImage
-                              src={member.user.image}
-                              alt={member.user.name}
-                            />
-                          )}
-                          <AvatarFallback className="text-[10px] bg-(--color-brand-50) text-(--color-brand-900)">
-                            {mi}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-1.5">
-                            <p className="text-xs font-medium text-(--color-text-primary) truncate">
-                              {member.user.name}{" "}
-                              {isCurrentUser && (
-                                <span className="text-(--color-text-tertiary)">
-                                  (you)
-                                </span>
-                              )}
-                            </p>
-                            {member.role === "ADMIN" && (
-                              <Badge
-                                variant="outline"
-                                className="text-[9px] px-1 py-0 border-(--color-brand-200) text-(--color-brand-600)"
-                              >
-                                Admin
-                              </Badge>
-                            )}
-                            {isCreator && (
-                              <Badge
-                                variant="outline"
-                                className="text-[9px] px-1 py-0 border-(--color-text-tertiary) text-(--color-text-tertiary)"
-                              >
-                                Creator
-                              </Badge>
-                            )}
-                          </div>
-                          {error && (
-                            <p className="text-[10px] text-(--color-coral-400)">
-                              {error}
-                            </p>
-                          )}
-                        </div>
-                        {isAdmin && !isCreator && !isCurrentUser && (
-                          <div className="flex items-center gap-1 shrink-0">
-                            {member.role !== "ADMIN" && (
-                              <button
-                                onClick={() => handlePromote(member)}
-                                disabled={actionLoading[member.userId]}
-                                className="rounded p-1 text-(--color-text-tertiary) hover:bg-(--color-background-tertiary) transition-colors"
-                                title="Make admin"
-                              >
-                                {actionLoading[member.userId] ? (
-                                  <Loader2 className="size-3 animate-spin" />
-                                ) : (
-                                  <Shield className="size-3" />
-                                )}
-                              </button>
-                            )}
-                            <button
-                              onClick={() => handleRemoveMember(member)}
-                              disabled={actionLoading[member.userId]}
-                              className="rounded p-1 text-(--color-text-tertiary) hover:bg-(--color-coral-50) hover:text-(--color-coral-600) transition-colors"
-                              title="Remove member"
-                            >
-                              <UserMinus className="size-3" />
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
               </div>
             )}
 
-            {/* Media tab */}
+            {/* ── Media tab ───────────────────────────────────────────────── */}
             {nav === "media" && (
               <div className="p-4">
                 {isLoadingMedia ? (
@@ -822,7 +964,7 @@ export default function GroupInfoModal({
               </div>
             )}
 
-            {/* Files tab */}
+            {/* ── Files tab ───────────────────────────────────────────────── */}
             {nav === "files" && (
               <div className="p-4">
                 {isLoadingFiles ? (
@@ -856,6 +998,46 @@ export default function GroupInfoModal({
                               {formatBytes(f.fileSize)}
                             </p>
                           )}
+                        </div>
+                      </a>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ── Links tab ───────────────────────────────────────────────── */}
+            {nav === "links" && (
+              <div className="p-4">
+                {isLoadingLinks ? (
+                  <div className="flex justify-center py-12">
+                    <Loader2 className="size-6 animate-spin text-(--color-text-tertiary)" />
+                  </div>
+                ) : links.length === 0 ? (
+                  <div className="flex flex-col items-center py-12 gap-3">
+                    <LinkIcon className="size-10 text-(--color-text-tertiary)" />
+                    <p className="text-sm text-(--color-text-tertiary)">
+                      No links shared yet
+                    </p>
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-2">
+                    {links.map((l) => (
+                      <a
+                        key={l.id}
+                        href={l.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-3 rounded-xl border border-(--color-border-tertiary) px-4 py-3 hover:bg-(--color-background-secondary) transition-colors"
+                      >
+                        <LinkIcon className="size-5 shrink-0 text-(--color-brand-400)" />
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm text-(--color-text-primary)">
+                            {l.url}
+                          </p>
+                          <p className="text-xs text-(--color-text-tertiary)">
+                            {formatDate(l.createdAt)}
+                          </p>
                         </div>
                       </a>
                     ))}

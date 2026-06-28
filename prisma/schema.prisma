@@ -171,7 +171,7 @@ model ConversationMember {
   userId         String
   role           MemberRole   @default(MEMBER)
   joinedAt       DateTime     @default(now())
-
+  isMuted   Boolean  @default(false)
   conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
 

@@ -94,7 +94,11 @@ export type FriendshipWithFriend = {
 // ── Conversations ─────────────────────────────────────────────────────────────
 
 export type MemberWithUser = {
+  id: string;
   userId: string;
+  role: string;
+  joinedAt: Date;
+  isMuted: boolean;
   user: {
     id: string;
     name: string;
@@ -191,9 +195,15 @@ export type GroupDetail = {
   description: string | null;
   image: string | null;
   createdBy: string;
+  createdAt: Date;
+  creator: {
+    name: string;
+    username: string;
+  };
   memberCount: number;
   members: GroupMember[];
   currentUserRole: "ADMIN" | "MEMBER";
+  isMuted: boolean;
 };
 
 // ── Messages ──────────────────────────────────────────────────────────────────
@@ -248,4 +258,19 @@ export type RawGroupConversation = {
   lastMessageAt: Date | null;
   members: (MemberWithUser & { id: string; role: string; joinedAt: Date })[];
   messages: (LastMessage & { sender: { name: string } })[];
+};
+
+export type RawGroup = {
+  id: string;
+  name: string | null;
+  description: string | null;
+  image: string | null;
+  createdBy: string;
+  createdAt: Date;
+  lastMessageAt: Date | null;
+  members: MemberWithUser[];
+  creator: {
+    name: string;
+    username: string;
+  };
 };

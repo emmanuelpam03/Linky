@@ -2,12 +2,12 @@
 
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth-session";
-import { ConversationDetail } from "@/types";
+import type { GroupDetail, RawGroup, RawGroupConversation } from "@/types";
 
-export async function getConversation(conversationId: string): Promise<{
+export async function getGroup(conversationId: string): Promise<{
   success: boolean;
   error?: string;
-  data: ConversationDetail | null;
+  data: GroupDetail | null;
 }> {
   const session = await getSession();
   if (!session?.user)
@@ -15,12 +15,16 @@ export async function getConversation(conversationId: string): Promise<{
 
   const userId = session.user.id;
 
-  const conversation = await prisma.conversation.findFirst({
+  const raw = await prisma.conversation.findFirst({
     where: {
       id: conversationId,
-      members: { some: { userId } }, // ensure user is a member
+      type: "GROUP",
+      members: { some: { userId } },
     },
     include: {
+      creator: {
+        select: { name: true, username: true },
+      },
       members: {
         include: {
           user: {
@@ -29,41 +33,39 @@ export async function getConversation(conversationId: string): Promise<{
               name: true,
               username: true,
               image: true,
-              bio: true,
             },
           },
         },
+        orderBy: { joinedAt: "asc" },
       },
     },
   });
 
-  if (!conversation)
-    return { success: false, error: "Conversation not found", data: null };
+  if (!raw) return { success: false, error: "Group not found", data: null };
 
-  const otherMember =
-    conversation.type === "DIRECT"
-      ? conversation.members.find((m) => m.userId !== userId)
-      : null;
+  const conversation = raw as unknown as RawGroup;
+  const myMembership = conversation.members.find((m) => m.userId === userId);
 
   return {
     success: true,
     data: {
       id: conversation.id,
-      type: conversation.type,
-      name:
-        conversation.type === "DIRECT"
-          ? (otherMember?.user.name ?? "Unknown")
-          : (conversation.name ?? "Group"),
-      image:
-        conversation.type === "DIRECT"
-          ? (otherMember?.user.image ?? null)
-          : (conversation.image ?? null),
-      otherUser: otherMember
-        ? {
-            ...otherMember.user,
-            bio: (otherMember.user as { bio?: string | null }).bio ?? null,
-          }
-        : null,
+      name: conversation.name ?? "Unnamed group",
+      description: conversation.description ?? null,
+      image: conversation.image ?? null,
+      createdBy: conversation.createdBy,
+      createdAt: conversation.createdAt,
+      creator: conversation.creator,
+      memberCount: conversation.members.length,
+      members: conversation.members.map((m) => ({
+        id: m.id,
+        userId: m.userId,
+        role: m.role as "ADMIN" | "MEMBER",
+        joinedAt: m.joinedAt,
+        user: m.user,
+      })),
+      currentUserRole: (myMembership?.role ?? "MEMBER") as "ADMIN" | "MEMBER",
+      isMuted: myMembership?.isMuted ?? false,
     },
   };
 }
