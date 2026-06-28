@@ -1,6 +1,7 @@
 "use server";
 
 import prisma from "@/lib/prisma";
+import { Prisma } from "@/generated/prisma/client";
 import { getSession } from "@/lib/auth-session";
 
 export async function addGroupMember(conversationId: string, userId: string) {
@@ -55,45 +56,69 @@ export async function removeGroupMember(
 
   const requesterId = session.user.id;
 
-  if (requesterId !== userId) {
-    const requesterMembership = await prisma.conversationMember.findFirst({
-      where: { conversationId, userId: requesterId, role: "ADMIN" },
-    });
-    if (!requesterMembership)
-      return { success: false, error: "Only admins can remove members" };
-  }
+  // All checks + delete inside serializable transaction to prevent races
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      await prisma.$transaction(
+        async (tx) => {
+          // Requester authorization — inside transaction to avoid stale state
+          if (requesterId !== userId) {
+            const requesterMembership = await tx.conversationMember.findFirst({
+              where: { conversationId, userId: requesterId, role: "ADMIN" },
+            });
+            if (!requesterMembership) {
+              throw new Error("Only admins can remove members");
+            }
+          }
 
-  // Prevent removing the last admin — check + delete atomically
-  try {
-    await prisma.$transaction(async (tx) => {
-      const targetMember = await tx.conversationMember.findFirst({
-        where: { conversationId, userId, role: "ADMIN" },
-        select: { id: true },
-      });
+          // Prevent removing the last admin
+          const targetMember = await tx.conversationMember.findFirst({
+            where: { conversationId, userId, role: "ADMIN" },
+            select: { id: true },
+          });
 
-      if (targetMember) {
-        const adminCount = await tx.conversationMember.count({
-          where: { conversationId, role: "ADMIN" },
-        });
-        if (adminCount <= 1) {
-          throw new Error("Cannot remove the last admin of the group");
-        }
+          if (targetMember) {
+            const adminCount = await tx.conversationMember.count({
+              where: { conversationId, role: "ADMIN" },
+            });
+            if (adminCount <= 1) {
+              throw new Error("Cannot remove the last admin of the group");
+            }
+          }
+
+          await tx.conversationMember.deleteMany({
+            where: { conversationId, userId },
+          });
+        },
+        {
+          isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+        },
+      );
+
+      return { success: true };
+    } catch (error) {
+      // Retry on serialization failure (concurrent modification detected)
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === "P2034"
+      ) {
+        if (attempt < 2) continue;
       }
 
-      await tx.conversationMember.deleteMany({
-        where: { conversationId, userId },
-      });
-    });
-  } catch (error) {
-    if (
-      error instanceof Error &&
-      error.message === "Cannot remove the last admin of the group"
-    ) {
-      return { success: false, error: error.message };
+      // Known sentinel errors from our business-logic checks
+      if (
+        error instanceof Error &&
+        (error.message === "Cannot remove the last admin of the group" ||
+          error.message === "Only admins can remove members")
+      ) {
+        return { success: false, error: error.message };
+      }
+
+      throw error;
     }
-    throw error;
   }
 
+  // Unreachable — all paths above return or throw
   return { success: true };
 }
 
