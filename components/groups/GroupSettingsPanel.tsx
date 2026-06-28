@@ -29,7 +29,6 @@ import {
   getSharedMedia,
   getSharedFiles,
 } from "@/app/actions/conversations/media";
-import { cn } from "@/lib/utils";
 import Image from "next/image";
 
 type SharedMedia = { id: string; imageUrl: string; createdAt: Date };
