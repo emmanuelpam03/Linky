@@ -142,7 +142,7 @@ export default function GroupInfoModal({
       }
     };
     load();
-  }, [nav]);
+  }, [files.length, group.id, media.length, nav]);
 
   // Search users when query changes
   useEffect(() => {

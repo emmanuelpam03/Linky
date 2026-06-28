@@ -84,7 +84,7 @@ export default function ChatInfoModal({
       }
     };
     load();
-  }, [nav]);
+  }, [conversation.id, files.length, media.length, nav]);
 
   const handleBlock = async () => {
     if (!otherUser) return;
