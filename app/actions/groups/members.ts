@@ -57,7 +57,8 @@ export async function removeGroupMember(
   const requesterId = session.user.id;
 
   // All checks + delete inside serializable transaction to prevent races
-  for (let attempt = 0; attempt < 3; attempt++) {
+  const maxAttempts = 3;
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
     try {
       await prisma.$transaction(
         async (tx) => {
@@ -102,7 +103,11 @@ export async function removeGroupMember(
         error instanceof Prisma.PrismaClientKnownRequestError &&
         error.code === "P2034"
       ) {
-        if (attempt < 2) continue;
+        if (attempt < maxAttempts - 1) {
+          const delayMs = 25 * 2 ** attempt + Math.floor(Math.random() * 25);
+          await new Promise((resolve) => setTimeout(resolve, delayMs));
+          continue;
+        }
       }
 
       // Known sentinel errors from our business-logic checks
