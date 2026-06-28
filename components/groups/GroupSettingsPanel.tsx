@@ -103,9 +103,17 @@ export default function GroupSettingsPanel({
   // Delete group
   const [isDeletingGroup, setIsDeletingGroup] = useState(false);
 
+  const [friendErrors, setFriendErrors] = useState<Record<string, string>>({});
+  const [friendListError, setFriendListError] = useState("");
+
   const router = useRouter();
   const isAdmin = group.currentUserRole === "ADMIN";
   const { data: session } = useSession();
+
+  const groupRef = useRef(group);
+  useEffect(() => {
+    groupRef.current = group;
+  }, [group]);
 
   // Load media when tab changes
   useEffect(() => {
@@ -210,12 +218,19 @@ export default function GroupSettingsPanel({
     }
     setIsLoadingFriends(true);
     setShowAddMember(true);
+    setFriendListError("");
     try {
       const result = await getFriends();
       if (result.success) {
-        const memberIds = new Set(group.members.map((m) => m.userId));
+        const memberIds = new Set(
+          groupRef.current.members.map((m) => m.userId),
+        );
         setFriends(result.data.filter((f) => !memberIds.has(f.id)));
+      } else {
+        setFriendListError(result.error ?? "Failed to load friends");
       }
+    } catch {
+      setFriendListError("Failed to load friends");
     } finally {
       setIsLoadingFriends(false);
     }
@@ -224,11 +239,13 @@ export default function GroupSettingsPanel({
   const handleAddMember = async (friendId: string) => {
     setActionLoading((prev) => ({ ...prev, [friendId]: true }));
     try {
-      const result = await addGroupMember(group.id, friendId);
+      const result = await addGroupMember(groupRef.current.id, friendId);
       if (!result.success) {
-        setErrors((prev) => ({ ...prev, [friendId]: result.error ?? "Failed" }));
+        setFriendErrors((prev) => ({
+          ...prev,
+          [friendId]: result.error ?? "Failed",
+        }));
       } else {
-        // Construct a GroupMember from friend data so the list updates immediately
         const friend = friends.find((f) => f.id === friendId);
         if (friend) {
           const newMember: GroupMember = {
@@ -244,16 +261,19 @@ export default function GroupSettingsPanel({
             },
           };
           onGroupUpdated({
-            members: [...group.members, newMember],
-            memberCount: group.memberCount + 1,
+            members: [...groupRef.current.members, newMember],
+            memberCount: groupRef.current.memberCount + 1,
           });
         } else {
-          onGroupUpdated({ memberCount: group.memberCount + 1 });
+          onGroupUpdated({ memberCount: groupRef.current.memberCount + 1 });
         }
         setFriends((prev) => prev.filter((f) => f.id !== friendId));
       }
     } catch {
-      setErrors((prev) => ({ ...prev, [friendId]: "An unexpected error occurred" }));
+      setFriendErrors((prev) => ({
+        ...prev,
+        [friendId]: "An unexpected error occurred",
+      }));
     } finally {
       setActionLoading((prev) => ({ ...prev, [friendId]: false }));
     }
@@ -263,7 +283,10 @@ export default function GroupSettingsPanel({
     if (!confirm(`Remove ${member.user.name} from the group?`)) return;
     setActionLoading((prev) => ({ ...prev, [member.userId]: true }));
     try {
-      const result = await removeGroupMember(group.id, member.userId);
+      const result = await removeGroupMember(
+        groupRef.current.id,
+        member.userId,
+      );
       if (!result.success) {
         setErrors((prev) => ({
           ...prev,
@@ -271,8 +294,10 @@ export default function GroupSettingsPanel({
         }));
       } else {
         onGroupUpdated({
-          members: group.members.filter((m) => m.userId !== member.userId),
-          memberCount: group.memberCount - 1,
+          members: groupRef.current.members.filter(
+            (m) => m.userId !== member.userId,
+          ),
+          memberCount: groupRef.current.memberCount - 1,
         });
       }
     } catch {
@@ -289,7 +314,7 @@ export default function GroupSettingsPanel({
     if (!confirm(`Make ${member.user.name} an admin?`)) return;
     setActionLoading((prev) => ({ ...prev, [member.userId]: true }));
     try {
-      const result = await promoteToAdmin(group.id, member.userId);
+      const result = await promoteToAdmin(groupRef.current.id, member.userId);
       if (!result.success) {
         setErrors((prev) => ({
           ...prev,
@@ -297,7 +322,7 @@ export default function GroupSettingsPanel({
         }));
       } else {
         onGroupUpdated({
-          members: group.members.map((m) =>
+          members: groupRef.current.members.map((m) =>
             m.userId === member.userId ? { ...m, role: "ADMIN" } : m,
           ),
         });
@@ -569,6 +594,10 @@ export default function GroupSettingsPanel({
                   <div className="flex justify-center py-4">
                     <Loader2 className="size-4 animate-spin text-(--color-text-tertiary)" />
                   </div>
+                ) : friendListError ? (
+                  <p className="text-xs text-(--color-coral-400) text-center py-3">
+                    {friendListError}
+                  </p>
                 ) : friends.length === 0 ? (
                   <p className="text-xs text-(--color-text-tertiary) text-center py-3">
                     No friends to add
@@ -582,32 +611,41 @@ export default function GroupSettingsPanel({
                       .slice(0, 2)
                       .join("")
                       .toUpperCase();
+                    const friendError = friendErrors[friend.id];
+
                     return (
                       <div
                         key={friend.id}
-                        className="flex items-center gap-2 px-3 py-2 hover:bg-(--color-background-secondary)"
+                        className="flex flex-col px-3 py-2 hover:bg-(--color-background-secondary)"
                       >
-                        <Avatar size="sm">
-                          <AvatarFallback className="text-[10px] bg-(--color-brand-50) text-(--color-brand-900)">
-                            {fi}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs font-medium text-(--color-text-primary) truncate">
-                            {friend.name}
-                          </p>
+                        <div className="flex items-center gap-2">
+                          <Avatar size="sm">
+                            <AvatarFallback className="text-[10px] bg-(--color-brand-50) text-(--color-brand-900)">
+                              {fi}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-medium text-(--color-text-primary) truncate">
+                              {friend.name}
+                            </p>
+                          </div>
+                          <button
+                            onClick={() => handleAddMember(friend.id)}
+                            disabled={actionLoading[friend.id]}
+                            className="text-xs text-(--color-brand-400) hover:underline shrink-0"
+                          >
+                            {actionLoading[friend.id] ? (
+                              <Loader2 className="size-3 animate-spin" />
+                            ) : (
+                              "Add"
+                            )}
+                          </button>
                         </div>
-                        <button
-                          onClick={() => handleAddMember(friend.id)}
-                          disabled={actionLoading[friend.id]}
-                          className="text-xs text-(--color-brand-400) hover:underline shrink-0"
-                        >
-                          {actionLoading[friend.id] ? (
-                            <Loader2 className="size-3 animate-spin" />
-                          ) : (
-                            "Add"
-                          )}
-                        </button>
+                        {friendError && (
+                          <p className="mt-0.5 text-[10px] text-(--color-coral-400) pl-8">
+                            {friendError}
+                          </p>
+                        )}
                       </div>
                     );
                   })

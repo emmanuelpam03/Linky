@@ -1,6 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback } from "react";
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  useCallback,
+} from "react";
 import { MessageCircle, Users, Loader2, Info } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import type { ConversationDetail, MessageItem } from "@/types";
@@ -30,10 +36,9 @@ export default function ChatWindow({ conversation }: ChatWindowProps) {
   const conversationIdRef = useRef(conversation?.id);
   const lastConversationId = useRef<string | undefined>(conversation?.id);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (lastConversationId.current !== conversation?.id) {
       lastConversationId.current = conversation?.id;
-
       setGroupDetail(null);
       setShowSettings(false);
       setIsLoadingGroup(false);
@@ -139,14 +144,18 @@ export default function ChatWindow({ conversation }: ChatWindowProps) {
       try {
         const result = await getGroup(currentConversation.id);
 
-        // Guard: only apply the response if still on the same conversation
         if (currentConvId !== conversationIdRef.current) return;
 
         if (result.success && result.data) {
           setGroupDetail(result.data);
         }
+      } catch {
+        // Don't open settings if fetch failed
+        if (currentConvId === conversationIdRef.current) {
+          setIsLoadingGroup(false);
+        }
+        return; // ← bail out, don't call setShowSettings(true)
       } finally {
-        // Always clear loading state, even on failure
         if (currentConvId === conversationIdRef.current) {
           setIsLoadingGroup(false);
         }
