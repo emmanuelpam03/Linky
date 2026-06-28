@@ -40,6 +40,7 @@ export default function ChatWindow({ conversation }: ChatWindowProps) {
   const lastConversationId = useRef<string | undefined>(conversation?.id);
 
   useLayoutEffect(() => {
+    conversationIdRef.current = conversation?.id;
     if (lastConversationId.current !== conversation?.id) {
       lastConversationId.current = conversation?.id;
       setGroupDetail(null);
@@ -48,11 +49,6 @@ export default function ChatWindow({ conversation }: ChatWindowProps) {
       setIsLoadingGroup(false);
     }
   }, [conversation?.id]);
-
-  // Sync the ref in a useEffect (safe — refs should not be written during render)
-  useEffect(() => {
-    conversationIdRef.current = conversation?.id;
-  }, [conversation]);
 
   useEffect(() => {
     if (!conversation) return;

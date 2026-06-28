@@ -11,11 +11,9 @@ export async function searchUsersForGroup(
   if (!session?.user)
     return { success: false, error: "Unauthorized", data: [] };
 
-  const trimmedQuery = query.trim();
-  if (!trimmedQuery) return { success: true, data: [] };
-
   const userId = session.user.id;
 
+  // Membership check first — before any early return
   const conversation = await prisma.conversation.findFirst({
     where: {
       id: conversationId,
@@ -26,6 +24,9 @@ export async function searchUsersForGroup(
   });
   if (!conversation)
     return { success: false, error: "Not a member of this group", data: [] };
+
+  const trimmedQuery = query.trim();
+  if (!trimmedQuery) return { success: true, data: [] };
 
   // Get existing member IDs
   const members = await prisma.conversationMember.findMany({
