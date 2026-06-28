@@ -2,7 +2,7 @@
 
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth-session";
-import { MessageItem } from "@/types";
+import type { MessageItem } from "@/types";
 
 export async function sendMessage({
   conversationId,
@@ -16,34 +16,46 @@ export async function sendMessage({
 
   const userId = session.user.id;
 
-  // Confirm user is a member of the conversation
   const membership = await prisma.conversationMember.findFirst({
     where: { conversationId, userId },
   });
-
   if (!membership)
     return { success: false, error: "Not a member of this conversation" };
 
-  const trimmed = text.trim();
-  if (!trimmed) return { success: false, error: "Message cannot be empty" };
+  // For direct conversations, check if either user has blocked the other
+  const conversation = await prisma.conversation.findUnique({
+    where: { id: conversationId },
+    include: {
+      members: { select: { userId: true } },
+    },
+  });
 
-  const message = await prisma.message.create({
+  if (conversation?.type === "DIRECT") {
+    const otherMember = conversation.members.find((m) => m.userId !== userId);
+    if (otherMember) {
+      const block = await prisma.block.findFirst({
+        where: {
+          OR: [
+            { blockerId: userId, blockedId: otherMember.userId },
+            { blockerId: otherMember.userId, blockedId: userId },
+          ],
+        },
+      });
+      if (block)
+        return {
+          success: false,
+          error: "You cannot send messages to this user",
+        };
+    }
+  }
+
+  const raw = await prisma.message.create({
     data: {
       conversationId,
       senderId: userId,
-      text: trimmed,
+      text: text.trim(),
     },
-    select: {
-      id: true,
-      text: true,
-      imageUrl: true,
-      fileUrl: true,
-      fileName: true,
-      fileSize: true,
-      deletedFor: true,
-      deletedForEveryone: true,
-      createdAt: true,
-      senderId: true,
+    include: {
       sender: {
         select: {
           id: true,
@@ -55,16 +67,23 @@ export async function sendMessage({
     },
   });
 
-  // Update conversation's lastMessageAt
   await prisma.conversation.update({
     where: { id: conversationId },
-    data: { lastMessageId: message.id, lastMessageAt: message.createdAt },
+    data: { lastMessageAt: raw.createdAt },
   });
 
   return {
     success: true,
     data: {
-      ...message,
+      id: raw.id,
+      text: raw.text,
+      imageUrl: raw.imageUrl,
+      fileUrl: raw.fileUrl,
+      fileName: raw.fileName,
+      fileSize: raw.fileSize,
+      createdAt: raw.createdAt,
+      senderId: raw.senderId,
+      sender: raw.sender,
       isOwn: true,
       deletedForEveryone: false,
       deletedForSelf: false,

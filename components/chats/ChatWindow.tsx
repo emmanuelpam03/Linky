@@ -17,6 +17,8 @@ import ChatSettingsPanel from "./ChatSettingsPanel";
 import GroupSettingsPanel from "@/components/groups/GroupSettingsPanel";
 import { getGroup } from "@/app/actions/groups/get";
 import type { GroupDetail } from "@/types";
+import ChatInfoModal from "./ChatInfoModal";
+import GroupInfoModal from "@/components/groups/GroupInfoModal";
 
 type ChatWindowProps = {
   conversation?: ConversationDetail | null;
@@ -30,6 +32,7 @@ export default function ChatWindow({ conversation }: ChatWindowProps) {
   const [showSettings, setShowSettings] = useState(false);
   const [groupDetail, setGroupDetail] = useState<GroupDetail | null>(null);
   const [isLoadingGroup, setIsLoadingGroup] = useState(false);
+  const [showModal, setShowModal] = useState(false);
 
   const bottomRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -196,7 +199,10 @@ export default function ChatWindow({ conversation }: ChatWindowProps) {
   return (
     <div className="flex h-full overflow-hidden">
       <div className="flex h-full flex-1 flex-col bg-(--color-background-primary)">
-        <header className="flex items-center gap-3 border-b border-(--color-border-tertiary) px-6 py-4">
+        <header
+          onClick={() => setShowModal(true)}
+          className="flex items-center gap-3 border-b border-(--color-border-tertiary) px-6 py-4 cursor-pointer hover:bg-(--color-background-secondary) transition-colors"
+        >
           <Avatar size="lg">
             <AvatarFallback className="bg-(--color-brand-50) text-sm font-medium text-(--color-brand-900)">
               {conversation.type === "GROUP" ? <Users size={18} /> : initials}
@@ -213,7 +219,10 @@ export default function ChatWindow({ conversation }: ChatWindowProps) {
             </p>
           </div>
           <button
-            onClick={handleToggleSettings}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleToggleSettings();
+            }}
             disabled={isLoadingGroup}
             className="rounded-lg p-1.5 text-(--color-text-tertiary) hover:bg-(--color-background-secondary) transition-colors"
           >
@@ -298,6 +307,23 @@ export default function ChatWindow({ conversation }: ChatWindowProps) {
         <GroupSettingsPanel
           group={groupDetail}
           onClose={() => setShowSettings(false)}
+          onGroupUpdated={(updates) =>
+            setGroupDetail((prev) => (prev ? { ...prev, ...updates } : prev))
+          }
+        />
+      )}
+
+      {showModal && conversation.type === "DIRECT" && (
+        <ChatInfoModal
+          conversation={conversation}
+          onClose={() => setShowModal(false)}
+        />
+      )}
+
+      {showModal && conversation.type === "GROUP" && groupDetail && (
+        <GroupInfoModal
+          group={groupDetail}
+          onClose={() => setShowModal(false)}
           onGroupUpdated={(updates) =>
             setGroupDetail((prev) => (prev ? { ...prev, ...updates } : prev))
           }

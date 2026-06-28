@@ -8,6 +8,7 @@ import { getMessages } from "@/app/actions/messages/list";
 import MessageBubble from "@/components/chats/MessageBubble";
 import MessageComposer from "@/components/chats/MessageComposer";
 import GroupSettingsPanel from "./GroupSettingsPanel";
+import GroupInfoModal from "./GroupInfoModal";
 
 type GroupWindowProps = {
   group?: GroupDetail | null;
@@ -19,6 +20,7 @@ export default function GroupWindow({ group }: GroupWindowProps) {
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [showSettings, setShowSettings] = useState(false);
+  const [showModal, setShowModal] = useState(false);
   const [groupData, setGroupData] = useState<GroupDetail | null>(group ?? null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -154,7 +156,10 @@ export default function GroupWindow({ group }: GroupWindowProps) {
   return (
     <div className="flex h-full overflow-hidden">
       <div className="flex h-full flex-1 flex-col bg-(--color-background-primary)">
-        <header className="flex items-center gap-3 border-b border-(--color-border-tertiary) px-6 py-4">
+        <header
+          onClick={() => setShowModal(true)}
+          className="flex items-center gap-3 border-b border-(--color-border-tertiary) px-6 py-4 cursor-pointer hover:bg-(--color-background-secondary) transition-colors"
+        >
           <Avatar size="lg">
             <AvatarFallback className="bg-(--color-background-tertiary) text-sm font-medium text-(--color-text-secondary)">
               {initials || <Users size={16} />}
@@ -169,7 +174,10 @@ export default function GroupWindow({ group }: GroupWindowProps) {
             </p>
           </div>
           <button
-            onClick={() => setShowSettings((s) => !s)}
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowSettings((s) => !s);
+            }}
             className="rounded-lg p-1.5 text-(--color-text-tertiary) hover:bg-(--color-background-secondary) transition-colors"
           >
             <Info className="size-5" />
@@ -242,6 +250,14 @@ export default function GroupWindow({ group }: GroupWindowProps) {
         <GroupSettingsPanel
           group={groupData}
           onClose={() => setShowSettings(false)}
+          onGroupUpdated={handleGroupUpdated}
+        />
+      )}
+
+      {showModal && groupData && (
+        <GroupInfoModal
+          group={groupData}
+          onClose={() => setShowModal(false)}
           onGroupUpdated={handleGroupUpdated}
         />
       )}

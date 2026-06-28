@@ -62,6 +62,11 @@ export type Account = Prisma.AccountModel
  */
 export type Verification = Prisma.VerificationModel
 /**
+ * Model Block
+ * 
+ */
+export type Block = Prisma.BlockModel
+/**
  * Model FriendRequest
  * 
  */

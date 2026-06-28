@@ -1,15 +1,12 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
 import {
   X,
   Loader2,
   UserPlus,
   Shield,
   UserMinus,
-  Trash2,
-  LogOut,
   ChevronDown,
   ChevronUp,
   Upload,
@@ -26,18 +23,13 @@ import {
   removeGroupMember,
   promoteToAdmin,
 } from "@/app/actions/groups/members";
-import {
-  updateGroup,
-  uploadGroupAvatar,
-  deleteGroup,
-} from "@/app/actions/groups/update";
+import { updateGroup, uploadGroupAvatar } from "@/app/actions/groups/update";
 import { getFriends } from "@/app/actions/friends/list";
 import {
   getSharedMedia,
   getSharedFiles,
 } from "@/app/actions/conversations/media";
 import { cn } from "@/lib/utils";
-import { useSession } from "@/lib/auth-client";
 import Image from "next/image";
 
 type SharedMedia = { id: string; imageUrl: string; createdAt: Date };
@@ -101,14 +93,12 @@ export default function GroupSettingsPanel({
   const [isLoadingFiles, setIsLoadingFiles] = useState(false);
 
   // Delete group
-  const [isDeletingGroup, setIsDeletingGroup] = useState(false);
+  // const [isDeletingGroup, setIsDeletingGroup] = useState(false);
 
   const [friendErrors, setFriendErrors] = useState<Record<string, string>>({});
   const [friendListError, setFriendListError] = useState("");
 
-  const router = useRouter();
   const isAdmin = group.currentUserRole === "ADMIN";
-  const { data: session } = useSession();
 
   const groupRef = useRef(group);
   useEffect(() => {
@@ -334,39 +324,6 @@ export default function GroupSettingsPanel({
       }));
     } finally {
       setActionLoading((prev) => ({ ...prev, [member.userId]: false }));
-    }
-  };
-
-  // ── Leave ─────────────────────────────────────────────────────────────────
-  const handleLeave = async () => {
-    if (!confirm("Leave this group?")) return;
-    const userId = session?.user?.id;
-    if (!userId) return;
-
-    // Prevent creator from leaving — they must delete or transfer ownership
-    if (userId === group.createdBy) {
-      alert(
-        "As the group creator, you cannot leave the group. Use 'Delete group' to remove it permanently.",
-      );
-      return;
-    }
-
-    const result = await removeGroupMember(group.id, userId);
-    if (result.success) router.push("/groups");
-  };
-
-  // ── Delete group ──────────────────────────────────────────────────────────
-  const handleDeleteGroup = async () => {
-    if (!confirm("Permanently delete this group? This cannot be undone."))
-      return;
-    setIsDeletingGroup(true);
-    try {
-      const result = await deleteGroup(group.id);
-      if (result.success) {
-        router.push("/groups");
-      }
-    } finally {
-      setIsDeletingGroup(false);
     }
   };
 
@@ -807,38 +764,6 @@ export default function GroupSettingsPanel({
             )}
           </div>
         )}
-
-        {/* Actions */}
-        <div className="px-4 py-4 space-y-2 border-t border-(--color-border-tertiary)">
-          <p className="text-xs font-medium text-(--color-text-tertiary) uppercase tracking-wide mb-3">
-            Actions
-          </p>
-
-          {session?.user?.id !== group.createdBy && (
-            <button
-              onClick={handleLeave}
-              className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-(--color-coral-600) hover:bg-(--color-coral-50) transition-colors"
-            >
-              <LogOut className="size-4" />
-              Leave group
-            </button>
-          )}
-
-          {isAdmin && group.createdBy === session?.user?.id && (
-            <button
-              onClick={handleDeleteGroup}
-              disabled={isDeletingGroup}
-              className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-(--color-coral-600) hover:bg-(--color-coral-50) transition-colors disabled:opacity-50"
-            >
-              {isDeletingGroup ? (
-                <Loader2 className="size-4 animate-spin" />
-              ) : (
-                <Trash2 className="size-4" />
-              )}
-              Delete group
-            </button>
-          )}
-        </div>
       </div>
     </div>
   );

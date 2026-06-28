@@ -1,18 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import {
-  X,
-  Loader2,
-  ShieldAlert,
-  Trash2,
-  FileText,
-  Image as ImageIcon,
-} from "lucide-react";
+import { X, Loader2, FileText, Image as ImageIcon } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import type { ConversationDetail } from "@/types";
-import { deleteConversationForSelf } from "@/app/actions/conversations/delete";
+// import { deleteConversationForSelf } from "@/app/actions/conversations/delete";
 import {
   getSharedMedia,
   getSharedFiles,
@@ -46,13 +39,11 @@ export default function ChatSettingsPanel({
   conversation,
   onClose,
 }: ChatSettingsPanelProps) {
-  const [isDeleting, setIsDeleting] = useState(false);
   const [tab, setTab] = useState<Tab>("media");
   const [media, setMedia] = useState<SharedMedia[]>([]);
   const [files, setFiles] = useState<SharedFile[]>([]);
   const [isLoadingMedia, setIsLoadingMedia] = useState(true);
   const [isLoadingFiles, setIsLoadingFiles] = useState(true);
-  const router = useRouter();
   const { otherUser } = conversation;
 
   useEffect(() => {
@@ -95,14 +86,6 @@ export default function ChatSettingsPanel({
       .slice(0, 2)
       .join("")
       .toUpperCase() ?? "?";
-
-  const handleDelete = async () => {
-    if (!confirm("Delete this conversation? This cannot be undone.")) return;
-    setIsDeleting(true);
-    const result = await deleteConversationForSelf(conversation.id);
-    if (result.success) router.push("/chats");
-    setIsDeleting(false);
-  };
 
   return (
     <div className="flex h-full w-72 shrink-0 flex-col border-l border-(--color-border-tertiary) bg-(--color-background-primary)">
@@ -242,35 +225,6 @@ export default function ChatSettingsPanel({
             )}
           </div>
         )}
-
-        {/* Actions */}
-        <div className="px-4 py-4 space-y-2 border-t border-(--color-border-tertiary)">
-          <p className="text-xs font-medium text-(--color-text-tertiary) uppercase tracking-wide mb-3">
-            Actions
-          </p>
-
-          <button
-            disabled
-            className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-(--color-text-secondary) hover:bg-(--color-background-secondary) transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            title="Coming soon"
-          >
-            <ShieldAlert className="size-4 text-(--color-coral-400)" />
-            Block user — Coming soon
-          </button>
-
-          <button
-            onClick={handleDelete}
-            disabled={isDeleting}
-            className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-(--color-coral-600) hover:bg-(--color-coral-50) transition-colors disabled:opacity-50"
-          >
-            {isDeleting ? (
-              <Loader2 className="size-4 animate-spin" />
-            ) : (
-              <Trash2 className="size-4" />
-            )}
-            Delete conversation
-          </button>
-        </div>
       </div>
     </div>
   );
