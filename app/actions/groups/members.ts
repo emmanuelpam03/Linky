@@ -10,10 +10,15 @@ export async function addGroupMember(conversationId: string, userId: string) {
   const requesterId = session.user.id;
 
   // Any member can add — just verify requester is a member
-  const requesterMembership = await prisma.conversationMember.findFirst({
-    where: { conversationId, userId: requesterId },
+  const conversation = await prisma.conversation.findFirst({
+    where: {
+      id: conversationId,
+      type: "GROUP",
+      members: { some: { userId: requesterId } },
+    },
+    select: { id: true },
   });
-  if (!requesterMembership)
+  if (!conversation)
     return { success: false, error: "You are not a member of this group" };
 
   // Check block in either direction
@@ -58,9 +63,28 @@ export async function removeGroupMember(
       return { success: false, error: "Only admins can remove members" };
   }
 
-  await prisma.conversationMember.deleteMany({
-    where: { conversationId, userId },
+  // Prevent removing the last admin
+  const targetMember = await prisma.conversationMember.findFirst({
+    where: { conversationId, userId, role: "ADMIN" },
+    select: { id: true },
   });
+
+  if (targetMember) {
+    const adminCount = await prisma.conversationMember.count({
+      where: { conversationId, role: "ADMIN" },
+    });
+    if (adminCount <= 1)
+      return {
+        success: false,
+        error: "Cannot remove the last admin of the group",
+      };
+  }
+
+  await prisma.$transaction([
+    prisma.conversationMember.deleteMany({
+      where: { conversationId, userId },
+    }),
+  ]);
 
   return { success: true };
 }

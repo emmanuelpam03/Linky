@@ -144,8 +144,9 @@ export default function GroupInfoModal({
     load();
   }, [files.length, group.id, media.length, nav]);
 
-  // Search users when query changes
+  // Search users when query changes (with stale-response guard)
   useEffect(() => {
+    let cancelled = false;
     const search = async () => {
       if (!debouncedQuery.trim()) {
         setSearchResults([]);
@@ -153,10 +154,12 @@ export default function GroupInfoModal({
       }
       setIsSearching(true);
       const result = await searchUsersForGroup(debouncedQuery, group.id);
+      if (cancelled) return;
       if (result.success) setSearchResults(result.data);
       setIsSearching(false);
     };
     search();
+    return () => { cancelled = true; };
   }, [debouncedQuery, group.id]);
 
   // ── Avatar ────────────────────────────────────────────────────────────────

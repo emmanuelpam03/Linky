@@ -44,6 +44,7 @@ export default function ChatWindow({ conversation }: ChatWindowProps) {
       lastConversationId.current = conversation?.id;
       setGroupDetail(null);
       setShowSettings(false);
+      setShowModal(false);
       setIsLoadingGroup(false);
     }
   }, [conversation?.id]);
@@ -168,6 +169,32 @@ export default function ChatWindow({ conversation }: ChatWindowProps) {
     setShowSettings(true);
   };
 
+  const handleShowModal = async () => {
+    if (!conversation) return;
+
+    if (conversation.type === "GROUP" && !groupDetail) {
+      const currentConvId = conversation.id;
+      setIsLoadingGroup(true);
+      try {
+        const result = await getGroup(currentConvId);
+        if (currentConvId !== conversationIdRef.current) return;
+        if (result.success && result.data) {
+          setGroupDetail(result.data);
+        } else {
+          return;
+        }
+      } catch {
+        return;
+      } finally {
+        if (currentConvId === conversationIdRef.current) {
+          setIsLoadingGroup(false);
+        }
+      }
+    }
+
+    setShowModal(true);
+  };
+
   if (!conversation) {
     return (
       <div className="flex h-full flex-col items-center justify-center bg-(--color-background-primary)">
@@ -200,7 +227,7 @@ export default function ChatWindow({ conversation }: ChatWindowProps) {
     <div className="flex h-full overflow-hidden">
       <div className="flex h-full flex-1 flex-col bg-(--color-background-primary)">
         <header
-          onClick={() => setShowModal(true)}
+          onClick={handleShowModal}
           className="flex items-center gap-3 border-b border-(--color-border-tertiary) px-6 py-4 cursor-pointer hover:bg-(--color-background-secondary) transition-colors"
         >
           <Avatar size="lg">

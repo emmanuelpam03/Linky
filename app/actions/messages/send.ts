@@ -49,11 +49,14 @@ export async function sendMessage({
     }
   }
 
+  const trimmedText = text.trim();
+  if (!trimmedText) return { success: false, error: "Message cannot be empty" };
+
   const raw = await prisma.message.create({
     data: {
       conversationId,
       senderId: userId,
-      text: text.trim(),
+      text: trimmedText,
     },
     include: {
       sender: {

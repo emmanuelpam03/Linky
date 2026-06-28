@@ -12,6 +12,13 @@ export async function blockUser(blockedId: string) {
   if (blockerId === blockedId)
     return { success: false, error: "You cannot block yourself" };
 
+  // Verify the target user exists
+  const targetUser = await prisma.user.findUnique({
+    where: { id: blockedId },
+    select: { id: true },
+  });
+  if (!targetUser) return { success: false, error: "User not found" };
+
   await prisma.block.upsert({
     where: { blockerId_blockedId: { blockerId, blockedId } },
     create: { blockerId, blockedId },

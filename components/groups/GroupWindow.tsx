@@ -29,6 +29,7 @@ export default function GroupWindow({ group }: GroupWindowProps) {
   if (group?.id !== prevGroupIdRef.current) {
     prevGroupIdRef.current = group?.id;
     setGroupData(group ?? null);
+    setShowModal(false);
   }
 
   const scrollRef = useRef<HTMLDivElement>(null);
