@@ -58,9 +58,8 @@ const MessageBubble = ({
     // Don't show if deleted for everyone and already deleted for self
     if (deletedForEveryone && deletedForSelf) return;
     e.preventDefault();
-
     const optionCount =
-      (!deletedForSelf ? 1 : 0) +
+      (!deletedForSelf && !deletedForEveryone ? 1 : 0) +
       (!deletedForEveryone && isOwn ? 1 : 0) +
       (deletedForEveryone ? 1 : 0);
     const menuHeight = Math.max(menuItemHeight, optionCount * menuItemHeight);

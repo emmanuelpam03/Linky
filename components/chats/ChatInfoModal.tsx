@@ -95,6 +95,67 @@ export default function ChatInfoModal({
   const { toast } = useToast();
   const { otherUser } = conversation;
 
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadStatuses = async () => {
+      if (!otherUser) return;
+
+      const [blockStatus, muteStatus] = await Promise.all([
+        getBlockStatus(otherUser.id),
+        getMuteStatus(conversation.id),
+      ]);
+
+      if (cancelled) return;
+
+      setIBlocked(blockStatus.iBlocked);
+      setTheyBlocked(blockStatus.theyBlocked);
+      setIsMuted(muteStatus.isMuted);
+    };
+
+    loadStatuses();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [conversation.id, otherUser]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadSharedContent = async () => {
+      if (nav === "media" && media.length === 0) {
+        setIsLoadingMedia(true);
+        const result = await getSharedMedia(conversation.id);
+        if (cancelled) return;
+        if (result.success) setMedia(result.data);
+        setIsLoadingMedia(false);
+      }
+
+      if (nav === "files" && files.length === 0) {
+        setIsLoadingFiles(true);
+        const result = await getSharedFiles(conversation.id);
+        if (cancelled) return;
+        if (result.success) setFiles(result.data);
+        setIsLoadingFiles(false);
+      }
+
+      if (nav === "links" && links.length === 0) {
+        setIsLoadingLinks(true);
+        const result = await getSharedLinks(conversation.id);
+        if (cancelled) return;
+        if (result.success) setLinks(result.data);
+        setIsLoadingLinks(false);
+      }
+    };
+
+    loadSharedContent();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [conversation.id, nav, media.length, files.length, links.length]);
+
   const handleBlock = () => {
     if (!otherUser) return;
 

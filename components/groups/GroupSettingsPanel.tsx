@@ -43,6 +43,15 @@ function formatBytes(bytes: number | null): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+function isSafeHttpUrl(url: string): boolean {
+  try {
+    const parsedUrl = new URL(url);
+    return parsedUrl.protocol === "http:" || parsedUrl.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
 export default function GroupSettingsPanel({
   group,
   onClose,
@@ -284,18 +293,30 @@ export default function GroupSettingsPanel({
             ) : (
               <div className="flex flex-col gap-2">
                 {links.map((l) => (
-                  <a
-                    key={l.id}
-                    href={l.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-2 rounded-lg border border-(--color-border-tertiary) px-3 py-2 hover:bg-(--color-background-secondary) transition-colors"
-                  >
-                    <LinkIcon className="size-4 shrink-0 text-(--color-brand-400)" />
-                    <p className="truncate text-xs text-(--color-text-primary)">
-                      {l.url}
-                    </p>
-                  </a>
+                  isSafeHttpUrl(l.url) ? (
+                    <a
+                      key={l.id}
+                      href={l.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 rounded-lg border border-(--color-border-tertiary) px-3 py-2 hover:bg-(--color-background-secondary) transition-colors"
+                    >
+                      <LinkIcon className="size-4 shrink-0 text-(--color-brand-400)" />
+                      <p className="truncate text-xs text-(--color-text-primary)">
+                        {l.url}
+                      </p>
+                    </a>
+                  ) : (
+                    <div
+                      key={l.id}
+                      className="flex items-center gap-2 rounded-lg border border-(--color-border-tertiary) px-3 py-2"
+                    >
+                      <LinkIcon className="size-4 shrink-0 text-(--color-text-tertiary)" />
+                      <p className="truncate text-xs text-(--color-text-secondary)">
+                        {l.url}
+                      </p>
+                    </div>
+                  )
                 ))}
               </div>
             )}
