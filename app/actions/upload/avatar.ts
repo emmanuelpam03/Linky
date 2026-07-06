@@ -1,8 +1,11 @@
 "use server";
 
-import cloudinary from "@/lib/cloudinary";
 import { auth } from "@/lib/auth";
+import prisma from "@/lib/prisma";
+import { mkdir, writeFile } from "fs/promises";
 import { headers } from "next/headers";
+import path from "path";
+import { randomUUID } from "crypto";
 
 export async function uploadAvatar(formData: FormData) {
   const session = await auth.api.getSession({
@@ -32,40 +35,29 @@ export async function uploadAvatar(formData: FormData) {
   }
 
   try {
-    // Convert file to buffer for Cloudinary
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
-    console.log("BUFFER SIZE:", buffer.length);
 
-    // Upload to Cloudinary
-    const result = await new Promise<{ secure_url: string }>(
-      (resolve, reject) => {
-        cloudinary.uploader
-          .upload_stream(
-            {
-              folder: "linky/avatars",
-              public_id: `avatar_${session.user.id}`,
-              overwrite: true,
-              transformation: [
-                { width: 200, height: 200, crop: "fill", gravity: "face" },
-              ],
-            },
-            (error, result) => {
-              if (error || !result) reject(error);
-              else resolve(result);
-            },
-          )
-          .end(buffer);
-      },
-    );
+    const extension =
+      file.type === "image/png"
+        ? "png"
+        : file.type === "image/webp"
+          ? "webp"
+          : "jpg";
+    const fileName = `${session.user.id}-${randomUUID()}.${extension}`;
+    const uploadDir = path.join(process.cwd(), "public", "uploads", "avatars");
+    const filePath = path.join(uploadDir, fileName);
+    const imageUrl = `/uploads/avatars/${fileName}`;
 
-    // Update user image via Better Auth
-    await auth.api.updateUser({
-      headers: await headers(),
-      body: { image: result.secure_url },
+    await mkdir(uploadDir, { recursive: true });
+    await writeFile(filePath, buffer);
+
+    await prisma.user.update({
+      where: { id: session.user.id },
+      data: { image: imageUrl },
     });
 
-    return { success: true, imageUrl: result.secure_url };
+    return { success: true, imageUrl };
   } catch (error) {
     console.error(error);
 
