@@ -2,7 +2,7 @@
 
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth-session";
-import { GroupDetail, RawGroupConversation } from "@/types";
+import type { GroupDetail, RawGroup, RawGroupConversation } from "@/types";
 
 export async function getGroup(conversationId: string): Promise<{
   success: boolean;
@@ -22,6 +22,9 @@ export async function getGroup(conversationId: string): Promise<{
       members: { some: { userId } },
     },
     include: {
+      creator: {
+        select: { name: true, username: true },
+      },
       members: {
         include: {
           user: {
@@ -40,9 +43,7 @@ export async function getGroup(conversationId: string): Promise<{
 
   if (!raw) return { success: false, error: "Group not found", data: null };
 
-  const conversation = raw as unknown as RawGroupConversation;
-  conversation.description = conversation.description ?? null;
-
+  const conversation = raw as unknown as RawGroup;
   const myMembership = conversation.members.find((m) => m.userId === userId);
 
   return {
@@ -53,6 +54,8 @@ export async function getGroup(conversationId: string): Promise<{
       description: conversation.description ?? null,
       image: conversation.image ?? null,
       createdBy: conversation.createdBy,
+      createdAt: conversation.createdAt,
+      creator: conversation.creator,
       memberCount: conversation.members.length,
       members: conversation.members.map((m) => ({
         id: m.id,
@@ -62,6 +65,7 @@ export async function getGroup(conversationId: string): Promise<{
         user: m.user,
       })),
       currentUserRole: (myMembership?.role ?? "MEMBER") as "ADMIN" | "MEMBER",
+      isMuted: myMembership?.isMuted ?? false,
     },
   };
 }

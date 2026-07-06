@@ -19,6 +19,8 @@ import { getGroup } from "@/app/actions/groups/get";
 import type { GroupDetail } from "@/types";
 import ChatInfoModal from "./ChatInfoModal";
 import GroupInfoModal from "@/components/groups/GroupInfoModal";
+import { clearChat } from "@/app/actions/conversations/settings";
+import { useToast } from "@/components/ui/toast";
 
 type ChatWindowProps = {
   conversation?: ConversationDetail | null;
@@ -38,6 +40,9 @@ export default function ChatWindow({ conversation }: ChatWindowProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const conversationIdRef = useRef(conversation?.id);
   const lastConversationId = useRef<string | undefined>(conversation?.id);
+  const messagesRef = useRef<MessageItem[]>([]);
+  const nextCursorRef = useRef<string | null>(null);
+  const { toast } = useToast();
 
   useLayoutEffect(() => {
     conversationIdRef.current = conversation?.id;
@@ -77,6 +82,14 @@ export default function ChatWindow({ conversation }: ChatWindowProps) {
       cancelled = true;
     };
   }, [conversation]);
+
+  useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
+
+  useEffect(() => {
+    nextCursorRef.current = nextCursor;
+  }, [nextCursor]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -126,6 +139,46 @@ export default function ChatWindow({ conversation }: ChatWindowProps) {
       prev.map((m) => (m.id === messageId ? { ...m, ...updates } : m)),
     );
   };
+
+  const handleClearChat = useCallback(async () => {
+    if (!conversation) return false;
+
+    const previousMessages = messagesRef.current;
+    const previousCursor = nextCursorRef.current;
+
+    setMessages([]);
+    setNextCursor(null);
+
+    try {
+      const result = await clearChat(conversation.id);
+      if (!result.success) {
+        setMessages(previousMessages);
+        setNextCursor(previousCursor);
+        toast({
+          title: "Could not clear chat",
+          description: result.error ?? "Try again.",
+          variant: "error",
+        });
+        return false;
+      }
+
+      toast({
+        title: "Chat cleared",
+        description: "Messages were removed from your view immediately.",
+        variant: "success",
+      });
+      return true;
+    } catch {
+      setMessages(previousMessages);
+      setNextCursor(previousCursor);
+      toast({
+        title: "Could not clear chat",
+        description: "Try again.",
+        variant: "error",
+      });
+      return false;
+    }
+  }, [conversation, toast]);
 
   const handleToggleSettings = async () => {
     if (!conversation) return;
@@ -340,6 +393,7 @@ export default function ChatWindow({ conversation }: ChatWindowProps) {
         <ChatInfoModal
           conversation={conversation}
           onClose={() => setShowModal(false)}
+          onClearChat={handleClearChat}
         />
       )}
 
@@ -350,6 +404,7 @@ export default function ChatWindow({ conversation }: ChatWindowProps) {
           onGroupUpdated={(updates) =>
             setGroupDetail((prev) => (prev ? { ...prev, ...updates } : prev))
           }
+          onClearChat={handleClearChat}
         />
       )}
     </div>

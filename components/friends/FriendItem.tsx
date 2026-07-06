@@ -15,6 +15,7 @@ type FriendItemProps = {
 const FriendItem = ({ friend }: FriendItemProps) => {
   const { id, name, username } = friend;
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
   const initials = name
@@ -27,13 +28,16 @@ const FriendItem = ({ friend }: FriendItemProps) => {
 
   const handleMessage = async () => {
     setIsLoading(true);
+    setError(null);
     try {
       const result = await getOrCreateDirectConversation(id);
       if (result.success && result.conversationId) {
         router.push(`/chats/${result.conversationId}`);
       } else {
-        // TODO: surface error to the user (toast/inline message)
+        setError("Could not open chat. Try again.");
       }
+    } catch {
+      setError("Could not open chat. Try again.");
     } finally {
       setIsLoading(false);
     }
@@ -59,20 +63,23 @@ const FriendItem = ({ friend }: FriendItemProps) => {
         </div>
       </div>
 
-      <Button
-        variant="outline"
-        size="sm"
-        className="gap-2 rounded-lg border-(--color-border-tertiary) bg-(--color-background-primary) text-(--color-text-primary) hover:bg-(--color-background-secondary)"
-        disabled={isLoading}
-        onClick={handleMessage}
-      >
-        {isLoading ? (
-          <Loader2 className="size-4 animate-spin" />
-        ) : (
-          <MessageSquare className="size-4" />
-        )}
-        Message
-      </Button>
+      <div className="flex flex-col items-end gap-2">
+        <Button
+          variant="outline"
+          size="sm"
+          className="gap-2 rounded-lg border-(--color-border-tertiary) bg-(--color-background-primary) text-(--color-text-primary) hover:bg-(--color-background-secondary)"
+          disabled={isLoading}
+          onClick={handleMessage}
+        >
+          {isLoading ? (
+            <Loader2 className="size-4 animate-spin" />
+          ) : (
+            <MessageSquare className="size-4" />
+          )}
+          Message
+        </Button>
+        {error && <p className="text-xs text-(--color-coral-500)">{error}</p>}
+      </div>
     </div>
   );
 };

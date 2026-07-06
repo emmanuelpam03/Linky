@@ -26,10 +26,11 @@ import { deleteConversationForSelf } from "@/app/actions/conversations/delete";
 import {
   toggleMute,
   getMuteStatus,
-  clearChat,
 } from "@/app/actions/conversations/settings";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+import { useToast } from "@/components/ui/toast";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 type SharedMedia = { id: string; imageUrl: string; createdAt: Date };
 type SharedFile = {
@@ -41,10 +42,18 @@ type SharedFile = {
 };
 type SharedLink = { id: string; url: string; createdAt: Date };
 type NavItem = "info" | "media" | "files" | "links";
+type ConfirmDialogConfig = {
+  title: string;
+  description: string;
+  confirmLabel: string;
+  confirmVariant?: "default" | "destructive";
+  onConfirm: () => Promise<void> | void;
+} | null;
 
 type ChatInfoModalProps = {
   conversation: ConversationDetail;
   onClose: () => void;
+  onClearChat: () => Promise<boolean>;
 };
 
 function formatBytes(bytes: number | null): string {
@@ -65,6 +74,7 @@ function formatDate(date: Date): string {
 export default function ChatInfoModal({
   conversation,
   onClose,
+  onClearChat,
 }: ChatInfoModalProps) {
   const [nav, setNav] = useState<NavItem>("info");
   const [media, setMedia] = useState<SharedMedia[]>([]);
@@ -80,92 +90,127 @@ export default function ChatInfoModal({
   const [isMuted, setIsMuted] = useState(false);
   const [isTogglingMute, setIsTogglingMute] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
+  const [confirmDialog, setConfirmDialog] = useState<ConfirmDialogConfig>(null);
   const router = useRouter();
+  const { toast } = useToast();
   const { otherUser } = conversation;
 
-  useEffect(() => {
+  const handleBlock = () => {
     if (!otherUser) return;
-    Promise.all([
-      getBlockStatus(otherUser.id),
-      getMuteStatus(conversation.id),
-    ]).then(([blockStatus, muteStatus]) => {
-      setIBlocked(blockStatus.iBlocked);
-      setTheyBlocked(blockStatus.theyBlocked);
-      setIsMuted(muteStatus.isMuted);
+
+    setConfirmDialog({
+      title: iBlocked ? `Unblock ${otherUser.name}?` : `Block ${otherUser.name}?`,
+      description: iBlocked
+        ? `${otherUser.name} will be able to send you messages again.`
+        : `${otherUser.name} won't be able to send you messages.`,
+      confirmLabel: iBlocked ? "Unblock" : "Block",
+      confirmVariant: "destructive",
+      onConfirm: async () => {
+        setIsBlocking(true);
+        if (iBlocked) {
+          const { unblockUser } = await import("@/app/actions/users/block");
+          const result = await unblockUser(otherUser.id);
+          if (result.success) {
+            setIBlocked(false);
+            toast({
+              title: "User unblocked",
+              description: `${otherUser.name} can send you messages again.`,
+              variant: "success",
+            });
+          } else {
+            toast({
+              title: "Could not unblock user",
+              description: result.error ?? "Try again.",
+              variant: "error",
+            });
+          }
+        } else {
+          const result = await blockUser(otherUser.id);
+          if (result.success) {
+            setIBlocked(true);
+            toast({
+              title: "User blocked",
+              description: `${otherUser.name} can no longer message you.`,
+              variant: "success",
+            });
+          } else {
+            toast({
+              title: "Could not block user",
+              description: result.error ?? "Try again.",
+              variant: "error",
+            });
+          }
+        }
+        setIsBlocking(false);
+      },
     });
-  }, [otherUser, conversation.id]);
-
-  useEffect(() => {
-    const load = async () => {
-      if (nav === "media" && media.length === 0) {
-        setIsLoadingMedia(true);
-        const r = await getSharedMedia(conversation.id);
-        if (r.success) setMedia(r.data);
-        setIsLoadingMedia(false);
-      }
-      if (nav === "files" && files.length === 0) {
-        setIsLoadingFiles(true);
-        const r = await getSharedFiles(conversation.id);
-        if (r.success) setFiles(r.data);
-        setIsLoadingFiles(false);
-      }
-      if (nav === "links" && links.length === 0) {
-        setIsLoadingLinks(true);
-        const r = await getSharedLinks(conversation.id);
-        if (r.success) setLinks(r.data);
-        setIsLoadingLinks(false);
-      }
-    };
-    load();
-  }, [nav, conversation.id, media.length, files.length, links.length]);
-
-  const handleBlock = async () => {
-    if (!otherUser) return;
-    if (
-      !confirm(
-        iBlocked
-          ? `Unblock ${otherUser.name}?`
-          : `Block ${otherUser.name}? They won't be able to send you messages.`,
-      )
-    )
-      return;
-    setIsBlocking(true);
-    if (iBlocked) {
-      const { unblockUser } = await import("@/app/actions/users/block");
-      await unblockUser(otherUser.id);
-      setIBlocked(false);
-    } else {
-      await blockUser(otherUser.id);
-      setIBlocked(true);
-    }
-    setIsBlocking(false);
   };
 
-  const handleDelete = async () => {
-    if (!confirm("Delete this conversation? This cannot be undone.")) return;
-    setIsDeleting(true);
-    const r = await deleteConversationForSelf(conversation.id);
-    if (r.success) {
-      onClose();
-      router.push("/chats");
-    }
-    setIsDeleting(false);
+  const handleDelete = () => {
+    setConfirmDialog({
+      title: "Delete this conversation?",
+      description: "This cannot be undone.",
+      confirmLabel: "Delete",
+      confirmVariant: "destructive",
+      onConfirm: async () => {
+        setIsDeleting(true);
+        const r = await deleteConversationForSelf(conversation.id);
+        if (r.success) {
+          toast({
+            title: "Conversation deleted",
+            description: "It has been removed from your list.",
+            variant: "success",
+          });
+          onClose();
+          router.push("/chats");
+        } else {
+          toast({
+            title: "Could not delete conversation",
+            description: r.error ?? "Try again.",
+            variant: "error",
+          });
+        }
+        setIsDeleting(false);
+      },
+    });
+  };
+
+  const handleClearChat = () => {
+    setConfirmDialog({
+      title: "Clear all messages?",
+      description: "This only affects your view.",
+      confirmLabel: "Clear chat",
+      confirmVariant: "destructive",
+      onConfirm: async () => {
+        setIsClearing(true);
+        const success = await onClearChat();
+        setIsClearing(false);
+        if (success) onClose();
+      },
+    });
   };
 
   const handleToggleMute = async () => {
     setIsTogglingMute(true);
     const newMuted = !isMuted;
     const r = await toggleMute(conversation.id, newMuted);
-    if (r.success) setIsMuted(newMuted);
+    if (r.success) {
+      setIsMuted(newMuted);
+      toast({
+        title: newMuted ? "Notifications off" : "Notifications on",
+        description: newMuted
+          ? `${otherUser?.name ?? "This chat"} is muted.`
+          : `${otherUser?.name ?? "This chat"} can notify you again.`,
+        variant: "success",
+      });
+    } else {
+      toast({
+        title: "Could not update notifications",
+        description: r.error ?? "Try again.",
+        variant: "error",
+      });
+    }
     setIsTogglingMute(false);
-  };
-
-  const handleClearChat = async () => {
-    if (!confirm("Clear all messages? This only affects your view.")) return;
-    setIsClearing(true);
-    await clearChat(conversation.id);
-    setIsClearing(false);
-    onClose();
   };
 
   const initials =
@@ -470,6 +515,21 @@ export default function ChatInfoModal({
           </div>
         </div>
       </div>
+
+      <ConfirmDialog
+        open={!!confirmDialog}
+        title={confirmDialog?.title ?? ""}
+        description={confirmDialog?.description ?? ""}
+        confirmLabel={confirmDialog?.confirmLabel ?? "Confirm"}
+        confirmVariant={confirmDialog?.confirmVariant ?? "destructive"}
+        isLoading={isBlocking || isDeleting || isClearing}
+        onCancel={() => setConfirmDialog(null)}
+        onConfirm={async () => {
+          const dialog = confirmDialog;
+          setConfirmDialog(null);
+          await dialog?.onConfirm();
+        }}
+      />
     </div>
   );
 }

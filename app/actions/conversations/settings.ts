@@ -1,5 +1,6 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth-session";
 
@@ -49,6 +50,11 @@ export async function clearChat(conversationId: string) {
       }),
     ),
   );
+
+  revalidatePath("/chats");
+  revalidatePath("/groups");
+  revalidatePath(`/chats/${conversationId}`);
+  revalidatePath(`/groups/${conversationId}`);
 
   return { success: true };
 }

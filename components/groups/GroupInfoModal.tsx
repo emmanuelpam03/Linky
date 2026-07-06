@@ -41,11 +41,13 @@ import {
   deleteGroup,
 } from "@/app/actions/groups/update";
 import { searchUsersForGroup } from "@/app/actions/users/search";
-import { toggleMute, clearChat } from "@/app/actions/conversations/settings";
+import { toggleMute } from "@/app/actions/conversations/settings";
 import { useSession } from "@/lib/auth-client";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { useDebounce } from "@/hooks/useDebounce";
+import { useToast } from "@/components/ui/toast";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 type SharedMedia = { id: string; imageUrl: string; createdAt: Date };
 type SharedFile = {
@@ -63,11 +65,19 @@ type UserResult = {
   image: string | null;
 };
 type NavItem = "info" | "members" | "media" | "files" | "links";
+type ConfirmDialogConfig = {
+  title: string;
+  description: string;
+  confirmLabel: string;
+  confirmVariant?: "default" | "destructive";
+  onConfirm: () => Promise<void> | void;
+} | null;
 
 type GroupInfoModalProps = {
   group: GroupDetail;
   onClose: () => void;
   onGroupUpdated: (updates: Partial<GroupDetail>) => void;
+  onClearChat: () => Promise<boolean>;
 };
 
 function formatBytes(bytes: number | null): string {
@@ -89,6 +99,7 @@ export default function GroupInfoModal({
   group,
   onClose,
   onGroupUpdated,
+  onClearChat,
 }: GroupInfoModalProps) {
   const [nav, setNav] = useState<NavItem>("info");
   const [media, setMedia] = useState<SharedMedia[]>([]);
@@ -135,9 +146,11 @@ export default function GroupInfoModal({
   const [isClearing, setIsClearing] = useState(false);
   const [isDeletingGroup, setIsDeletingGroup] = useState(false);
   const [isLeaving, setIsLeaving] = useState(false);
+  const [confirmDialog, setConfirmDialog] = useState<ConfirmDialogConfig>(null);
 
   const { data: session } = useSession();
   const router = useRouter();
+  const { toast } = useToast();
   const isAdmin = group.currentUserRole === "ADMIN";
   const groupRef = useRef(group);
   useEffect(() => {
@@ -210,12 +223,27 @@ export default function GroupInfoModal({
       const r = await uploadGroupAvatar(group.id, formData);
       if (!r.success) {
         setAvatarError(r.error ?? "Upload failed");
+        toast({
+          title: "Could not update avatar",
+          description: r.error ?? "Try again.",
+          variant: "error",
+        });
       } else {
         setLocalAvatar(r.imageUrl);
         onGroupUpdated({ image: r.imageUrl });
+        toast({
+          title: "Group avatar updated",
+          description: "The new avatar is visible immediately.",
+          variant: "success",
+        });
       }
     } catch {
       setAvatarError("Upload failed");
+      toast({
+        title: "Could not update avatar",
+        description: "Try again.",
+        variant: "error",
+      });
     } finally {
       setIsUploadingAvatar(false);
     }
@@ -233,12 +261,27 @@ export default function GroupInfoModal({
       const r = await updateGroup(group.id, { name: nameValue.trim() });
       if (!r.success) {
         setNameError(r.error ?? "Failed");
+        toast({
+          title: "Could not update group name",
+          description: r.error ?? "Try again.",
+          variant: "error",
+        });
       } else {
         onGroupUpdated({ name: nameValue.trim() });
         setIsEditingName(false);
+        toast({
+          title: "Group name updated",
+          description: "Changes were saved.",
+          variant: "success",
+        });
       }
     } catch {
       setNameError("Failed to update name");
+      toast({
+        title: "Could not update group name",
+        description: "Try again.",
+        variant: "error",
+      });
     } finally {
       setIsSavingName(false);
     }
@@ -252,12 +295,27 @@ export default function GroupInfoModal({
       const r = await updateGroup(group.id, { description: descValue.trim() });
       if (!r.success) {
         setDescError(r.error ?? "Failed");
+        toast({
+          title: "Could not update description",
+          description: r.error ?? "Try again.",
+          variant: "error",
+        });
       } else {
         onGroupUpdated({ description: descValue.trim() });
         setIsEditingDesc(false);
+        toast({
+          title: "Group description updated",
+          description: "Changes were saved.",
+          variant: "success",
+        });
       }
     } catch {
       setDescError("Failed to update description");
+      toast({
+        title: "Could not update description",
+        description: "Try again.",
+        variant: "error",
+      });
     } finally {
       setIsSavingDesc(false);
     }
@@ -271,17 +329,37 @@ export default function GroupInfoModal({
     if (r.success) {
       setIsMuted(newMuted);
       onGroupUpdated({ isMuted: newMuted });
+      toast({
+        title: newMuted ? "Group notifications off" : "Group notifications on",
+        description: newMuted
+          ? "You will not be notified about new messages."
+          : "Notifications are enabled again.",
+        variant: "success",
+      });
+    } else {
+      toast({
+        title: "Could not update notifications",
+        description: r.error ?? "Try again.",
+        variant: "error",
+      });
     }
     setIsTogglingMute(false);
   };
 
   // ── Clear chat ────────────────────────────────────────────────────────────
-  const handleClearChat = async () => {
-    if (!confirm("Clear all messages? This only affects your view.")) return;
-    setIsClearing(true);
-    await clearChat(group.id);
-    setIsClearing(false);
-    onClose();
+  const handleClearChat = () => {
+    setConfirmDialog({
+      title: "Clear all messages?",
+      description: "This only affects your view.",
+      confirmLabel: "Clear chat",
+      confirmVariant: "destructive",
+      onConfirm: async () => {
+        setIsClearing(true);
+        const success = await onClearChat();
+        setIsClearing(false);
+        if (success) onClose();
+      },
+    });
   };
 
   // ── Add member ────────────────────────────────────────────────────────────
@@ -291,6 +369,11 @@ export default function GroupInfoModal({
       const r = await addGroupMember(groupRef.current.id, user.id);
       if (!r.success) {
         setAddErrors((prev) => ({ ...prev, [user.id]: r.error ?? "Failed" }));
+        toast({
+          title: "Could not add member",
+          description: r.error ?? "Try again.",
+          variant: "error",
+        });
       } else {
         const newMember: GroupMember = {
           id: `new-${user.id}`,
@@ -305,102 +388,203 @@ export default function GroupInfoModal({
         });
         setAddResults((prev) => prev.filter((u) => u.id !== user.id));
         setAddQuery("");
+        toast({
+          title: "Member added",
+          description: `${user.name} joined the group.`,
+          variant: "success",
+        });
       }
     } catch {
       setAddErrors((prev) => ({ ...prev, [user.id]: "Unexpected error" }));
+      toast({
+        title: "Could not add member",
+        description: "Try again.",
+        variant: "error",
+      });
     } finally {
       setActionLoading((prev) => ({ ...prev, [user.id]: false }));
     }
   };
 
   // ── Remove member ─────────────────────────────────────────────────────────
-  const handleRemoveMember = async (member: GroupMember) => {
-    if (!confirm(`Remove ${member.user.name} from the group?`)) return;
-    setActionLoading((prev) => ({ ...prev, [member.userId]: true }));
-    try {
-      const r = await removeGroupMember(groupRef.current.id, member.userId);
-      if (!r.success) {
-        setMemberErrors((prev) => ({
-          ...prev,
-          [member.userId]: r.error ?? "Failed",
-        }));
-      } else {
-        onGroupUpdated({
-          members: groupRef.current.members.filter(
-            (m) => m.userId !== member.userId,
-          ),
-          memberCount: groupRef.current.memberCount - 1,
-        });
-      }
-    } catch {
-      setMemberErrors((prev) => ({
-        ...prev,
-        [member.userId]: "Unexpected error",
-      }));
-    } finally {
-      setActionLoading((prev) => ({ ...prev, [member.userId]: false }));
-    }
+  const handleRemoveMember = (member: GroupMember) => {
+    setConfirmDialog({
+      title: `Remove ${member.user.name}?`,
+      description: "They will be removed from the group.",
+      confirmLabel: "Remove member",
+      confirmVariant: "destructive",
+      onConfirm: async () => {
+        setActionLoading((prev) => ({ ...prev, [member.userId]: true }));
+        try {
+          const r = await removeGroupMember(groupRef.current.id, member.userId);
+          if (!r.success) {
+            setMemberErrors((prev) => ({
+              ...prev,
+              [member.userId]: r.error ?? "Failed",
+            }));
+            toast({
+              title: "Could not remove member",
+              description: r.error ?? "Try again.",
+              variant: "error",
+            });
+          } else {
+            onGroupUpdated({
+              members: groupRef.current.members.filter(
+                (m) => m.userId !== member.userId,
+              ),
+              memberCount: groupRef.current.memberCount - 1,
+            });
+            toast({
+              title: "Member removed",
+              description: `${member.user.name} was removed from the group.`,
+              variant: "success",
+            });
+          }
+        } catch {
+          setMemberErrors((prev) => ({
+            ...prev,
+            [member.userId]: "Unexpected error",
+          }));
+          toast({
+            title: "Could not remove member",
+            description: "Try again.",
+            variant: "error",
+          });
+        } finally {
+          setActionLoading((prev) => ({ ...prev, [member.userId]: false }));
+        }
+      },
+    });
   };
 
   // ── Promote ───────────────────────────────────────────────────────────────
-  const handlePromote = async (member: GroupMember) => {
-    if (!confirm(`Make ${member.user.name} an admin?`)) return;
-    setActionLoading((prev) => ({ ...prev, [member.userId]: true }));
-    try {
-      const r = await promoteToAdmin(groupRef.current.id, member.userId);
-      if (!r.success) {
-        setMemberErrors((prev) => ({
-          ...prev,
-          [member.userId]: r.error ?? "Failed",
-        }));
-      } else {
-        onGroupUpdated({
-          members: groupRef.current.members.map((m) =>
-            m.userId === member.userId ? { ...m, role: "ADMIN" } : m,
-          ),
-        });
-      }
-    } catch {
-      setMemberErrors((prev) => ({
-        ...prev,
-        [member.userId]: "Unexpected error",
-      }));
-    } finally {
-      setActionLoading((prev) => ({ ...prev, [member.userId]: false }));
-    }
+  const handlePromote = (member: GroupMember) => {
+    setConfirmDialog({
+      title: `Make ${member.user.name} an admin?`,
+      description: "They will get admin permissions in this group.",
+      confirmLabel: "Make admin",
+      confirmVariant: "default",
+      onConfirm: async () => {
+        setActionLoading((prev) => ({ ...prev, [member.userId]: true }));
+        try {
+          const r = await promoteToAdmin(groupRef.current.id, member.userId);
+          if (!r.success) {
+            setMemberErrors((prev) => ({
+              ...prev,
+              [member.userId]: r.error ?? "Failed",
+            }));
+            toast({
+              title: "Could not promote member",
+              description: r.error ?? "Try again.",
+              variant: "error",
+            });
+          } else {
+            onGroupUpdated({
+              members: groupRef.current.members.map((m) =>
+                m.userId === member.userId ? { ...m, role: "ADMIN" } : m,
+              ),
+            });
+            toast({
+              title: "Member promoted",
+              description: `${member.user.name} is now an admin.`,
+              variant: "success",
+            });
+          }
+        } catch {
+          setMemberErrors((prev) => ({
+            ...prev,
+            [member.userId]: "Unexpected error",
+          }));
+          toast({
+            title: "Could not promote member",
+            description: "Try again.",
+            variant: "error",
+          });
+        } finally {
+          setActionLoading((prev) => ({ ...prev, [member.userId]: false }));
+        }
+      },
+    });
   };
 
   // ── Leave ─────────────────────────────────────────────────────────────────
-  const handleLeave = async () => {
-    if (!confirm("Leave this group?")) return;
-    const userId = session?.user?.id;
-    if (!userId) return;
-    setIsLeaving(true);
-    try {
-      const r = await removeGroupMember(group.id, userId);
-      if (r.success) {
-        onClose();
-        router.push("/groups");
-      }
-    } finally {
-      setIsLeaving(false);
-    }
+  const handleLeave = () => {
+    setConfirmDialog({
+      title: "Leave this group?",
+      description: "You will need to be invited again to rejoin.",
+      confirmLabel: "Leave group",
+      confirmVariant: "destructive",
+      onConfirm: async () => {
+        const userId = session?.user?.id;
+        if (!userId) return;
+        setIsLeaving(true);
+        try {
+          const r = await removeGroupMember(group.id, userId);
+          if (r.success) {
+            toast({
+              title: "Left group",
+              description: `You left ${group.name}.`,
+              variant: "success",
+            });
+            onClose();
+            router.push("/groups");
+          } else {
+            toast({
+              title: "Could not leave group",
+              description: r.error ?? "Try again.",
+              variant: "error",
+            });
+          }
+        } catch {
+          toast({
+            title: "Could not leave group",
+            description: "Try again.",
+            variant: "error",
+          });
+        } finally {
+          setIsLeaving(false);
+        }
+      },
+    });
   };
 
   // ── Delete ────────────────────────────────────────────────────────────────
-  const handleDeleteGroup = async () => {
-    if (!confirm("Permanently delete this group? This cannot be undone."))
-      return;
-    setIsDeletingGroup(true);
-    try {
-      const r = await deleteGroup(group.id);
-      if (r.success) {
-        onClose();
-        router.push("/groups");
-      }
-    } finally {
-      setIsDeletingGroup(false);
-    }
+  const handleDeleteGroup = () => {
+    setConfirmDialog({
+      title: "Permanently delete this group?",
+      description: "This cannot be undone.",
+      confirmLabel: "Delete group",
+      confirmVariant: "destructive",
+      onConfirm: async () => {
+        setIsDeletingGroup(true);
+        try {
+          const r = await deleteGroup(group.id);
+          if (r.success) {
+            toast({
+              title: "Group deleted",
+              description: `${group.name} was deleted permanently.`,
+              variant: "success",
+            });
+            onClose();
+            router.push("/groups");
+          } else {
+            toast({
+              title: "Could not delete group",
+              description: r.error ?? "Try again.",
+              variant: "error",
+            });
+          }
+        } catch {
+          toast({
+            title: "Could not delete group",
+            description: "Try again.",
+            variant: "error",
+          });
+        } finally {
+          setIsDeletingGroup(false);
+        }
+      },
+    });
   };
 
   const displayAvatar = localAvatar ?? group.image;
@@ -495,16 +679,17 @@ export default function GroupInfoModal({
           </div>
 
           <div className="flex-1 overflow-y-auto">
-            {/* ── Info tab ────────────────────────────────────────────────── */}
+            {/* ── Info tab ───────────────────────────────────────────────── */}
             {nav === "info" && (
               <div>
-                <div className="flex flex-col items-center px-6 py-6 border-b border-(--color-border-tertiary)">
+                {/* Avatar & name */}
+                <div className="flex flex-col items-center px-6 py-8 border-b border-(--color-border-tertiary)">
                   <div className="relative">
                     <Avatar style={{ width: 80, height: 80 }}>
                       {displayAvatar && (
                         <AvatarImage src={displayAvatar} alt={group.name} />
                       )}
-                      <AvatarFallback className="bg-(--color-background-tertiary) text-2xl font-semibold text-(--color-text-secondary)">
+                      <AvatarFallback className="bg-(--color-brand-50) text-2xl font-semibold text-(--color-brand-900)">
                         {initials}
                       </AvatarFallback>
                     </Avatar>
@@ -513,14 +698,14 @@ export default function GroupInfoModal({
                         <input
                           ref={fileInputRef}
                           type="file"
-                          accept="image/jpeg,image/png,image/webp"
+                          accept="image/*"
                           className="hidden"
                           onChange={handleAvatarChange}
                         />
                         <button
                           onClick={() => fileInputRef.current?.click()}
                           disabled={isUploadingAvatar}
-                          className="absolute -bottom-1 -right-1 flex size-7 items-center justify-center rounded-full bg-(--color-brand-400) text-white shadow-sm hover:bg-(--color-brand-600) transition-colors"
+                          className="absolute -bottom-1 -right-1 rounded-full bg-(--color-brand-400) p-1.5 text-white shadow hover:bg-(--color-brand-600) transition-colors"
                         >
                           {isUploadingAvatar ? (
                             <Loader2 className="size-3.5 animate-spin" />
@@ -532,124 +717,126 @@ export default function GroupInfoModal({
                     )}
                   </div>
                   {avatarError && (
-                    <p className="mt-1 text-xs text-(--color-coral-400)">
+                    <p className="mt-2 text-xs text-(--color-coral-400)">
                       {avatarError}
                     </p>
                   )}
 
-                  {/* Name */}
-                  <div className="mt-4 flex items-center gap-2 justify-center w-full px-8">
-                    {isEditingName ? (
-                      <div className="flex items-center gap-1 w-full">
-                        <input
-                          autoFocus
-                          value={nameValue}
-                          onChange={(e) => setNameValue(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") handleSaveName();
-                            if (e.key === "Escape") setIsEditingName(false);
-                          }}
-                          className="flex-1 rounded-md border border-(--color-border-secondary) bg-transparent px-3 py-1.5 text-base text-(--color-text-primary) focus:outline-none focus:border-(--color-brand-400)"
-                        />
+                  {isAdmin && isEditingName ? (
+                    <div className="mt-4 flex flex-col items-center gap-1 w-full max-w-xs">
+                      <input
+                        autoFocus
+                        value={nameValue}
+                        onChange={(e) => setNameValue(e.target.value)}
+                        className="w-full rounded-md border border-(--color-border-secondary) bg-transparent px-3 py-1.5 text-center text-lg font-semibold text-(--color-text-primary) focus:outline-none focus:border-(--color-brand-400)"
+                      />
+                      <div className="flex items-center gap-2">
                         <button
                           onClick={handleSaveName}
                           disabled={isSavingName}
-                          className="shrink-0 text-(--color-brand-400)"
+                          className="text-sm text-(--color-brand-400) font-medium"
                         >
                           {isSavingName ? (
-                            <Loader2 className="size-4 animate-spin" />
+                            <Loader2 className="size-3.5 animate-spin" />
                           ) : (
                             <Check className="size-4" />
                           )}
                         </button>
                         <button
-                          onClick={() => setIsEditingName(false)}
-                          className="shrink-0 text-(--color-text-tertiary)"
+                          onClick={() => {
+                            setIsEditingName(false);
+                            setNameValue(group.name);
+                            setNameError("");
+                          }}
+                          className="text-sm text-(--color-text-tertiary)"
                         >
-                          <X className="size-4" />
+                          Cancel
                         </button>
                       </div>
-                    ) : (
-                      <>
-                        <h3 className="text-lg font-semibold text-(--color-text-primary)">
-                          {group.name}
-                        </h3>
-                        {isAdmin && (
-                          <button
-                            onClick={() => setIsEditingName(true)}
-                            className="text-(--color-text-tertiary) hover:text-(--color-text-primary)"
-                          >
-                            <Pencil className="size-4" />
-                          </button>
-                        )}
-                      </>
-                    )}
-                  </div>
-                  {nameError && (
-                    <p className="text-xs text-(--color-coral-400) mt-1">
-                      {nameError}
-                    </p>
+                      {nameError && (
+                        <p className="text-xs text-(--color-coral-400)">
+                          {nameError}
+                        </p>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="mt-4 flex items-center gap-2">
+                      <h3 className="text-lg font-semibold text-(--color-text-primary)">
+                        {group.name}
+                      </h3>
+                      {isAdmin && (
+                        <button
+                          onClick={() => {
+                            setIsEditingName(true);
+                            setNameValue(group.name);
+                          }}
+                          className="text-(--color-text-tertiary) hover:text-(--color-text-primary) transition-colors"
+                        >
+                          <Pencil className="size-3.5" />
+                        </button>
+                      )}
+                    </div>
                   )}
 
                   <p className="text-sm text-(--color-text-tertiary) mt-1">
                     Group · {group.memberCount} members
                   </p>
+                </div>
 
-                  {/* Description */}
-                  <div className="mt-3 w-full px-4">
-                    {isEditingDesc ? (
-                      <div className="flex flex-col gap-1">
-                        <textarea
-                          autoFocus
-                          value={descValue}
-                          onChange={(e) => setDescValue(e.target.value)}
-                          rows={3}
-                          className="w-full rounded-md border border-(--color-border-secondary) bg-transparent px-3 py-2 text-sm text-(--color-text-primary) focus:outline-none focus:border-(--color-brand-400) resize-none"
-                        />
-                        {descError && (
-                          <p className="text-xs text-(--color-coral-400)">
-                            {descError}
-                          </p>
-                        )}
-                        <div className="flex justify-end gap-2">
-                          <button
-                            onClick={handleSaveDesc}
-                            disabled={isSavingDesc}
-                            className="text-sm text-(--color-brand-400) font-medium"
-                          >
-                            {isSavingDesc ? (
-                              <Loader2 className="size-3.5 animate-spin" />
-                            ) : (
-                              "Save"
-                            )}
-                          </button>
-                          <button
-                            onClick={() => setIsEditingDesc(false)}
-                            className="text-sm text-(--color-text-tertiary)"
-                          >
-                            Cancel
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="flex items-start gap-1 justify-center">
-                        <p className="text-center text-sm text-(--color-text-secondary) leading-relaxed">
-                          {group.description ||
-                            (isAdmin
-                              ? "Add a description..."
-                              : "No description")}
+                {/* Description */}
+                <div className="mt-3 w-full px-4">
+                  {isEditingDesc ? (
+                    <div className="flex flex-col gap-1">
+                      <textarea
+                        autoFocus
+                        value={descValue}
+                        onChange={(e) => setDescValue(e.target.value)}
+                        rows={3}
+                        className="w-full rounded-md border border-(--color-border-secondary) bg-transparent px-3 py-2 text-sm text-(--color-text-primary) focus:outline-none focus:border-(--color-brand-400) resize-none"
+                      />
+                      {descError && (
+                        <p className="text-xs text-(--color-coral-400)">
+                          {descError}
                         </p>
-                        {isAdmin && (
-                          <button
-                            onClick={() => setIsEditingDesc(true)}
-                            className="shrink-0 text-(--color-text-tertiary) hover:text-(--color-text-primary) mt-0.5"
-                          >
-                            <Pencil className="size-3.5" />
-                          </button>
-                        )}
+                      )}
+                      <div className="flex justify-end gap-2">
+                        <button
+                          onClick={handleSaveDesc}
+                          disabled={isSavingDesc}
+                          className="text-sm text-(--color-brand-400) font-medium"
+                        >
+                          {isSavingDesc ? (
+                            <Loader2 className="size-3.5 animate-spin" />
+                          ) : (
+                            "Save"
+                          )}
+                        </button>
+                        <button
+                          onClick={() => setIsEditingDesc(false)}
+                          className="text-sm text-(--color-text-tertiary)"
+                        >
+                          Cancel
+                        </button>
                       </div>
-                    )}
-                  </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-start gap-1 justify-center">
+                      <p className="text-center text-sm text-(--color-text-secondary) leading-relaxed">
+                        {group.description ||
+                          (isAdmin
+                            ? "Add a description..."
+                            : "No description")}
+                      </p>
+                      {isAdmin && (
+                        <button
+                          onClick={() => setIsEditingDesc(true)}
+                          className="shrink-0 text-(--color-text-tertiary) hover:text-(--color-text-primary) mt-0.5"
+                        >
+                          <Pencil className="size-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 {/* Settings rows */}
@@ -778,11 +965,9 @@ export default function GroupInfoModal({
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-1.5 flex-wrap">
                               <p className="text-xs font-medium text-(--color-text-primary) truncate">
-                                {member.user.name}{" "}
+                                {member.user.name} {" "}
                                 {isCurrentUser && (
-                                  <span className="text-(--color-text-tertiary)">
-                                    (you)
-                                  </span>
+                                  <span className="text-(--color-text-tertiary)">(you)</span>
                                 )}
                               </p>
                               {member.role === "ADMIN" && (
@@ -882,10 +1067,7 @@ export default function GroupInfoModal({
                               <div className="flex items-center gap-2">
                                 <Avatar size="sm">
                                   {user.image && (
-                                    <AvatarImage
-                                      src={user.image}
-                                      alt={user.name}
-                                    />
+                                    <AvatarImage src={user.image} alt={user.name} />
                                   )}
                                   <AvatarFallback className="text-[10px] bg-(--color-brand-50) text-(--color-brand-900)">
                                     {ui}
@@ -1058,6 +1240,21 @@ export default function GroupInfoModal({
           </div>
         </div>
       </div>
+
+      <ConfirmDialog
+        open={!!confirmDialog}
+        title={confirmDialog?.title ?? ""}
+        description={confirmDialog?.description ?? ""}
+        confirmLabel={confirmDialog?.confirmLabel ?? "Confirm"}
+        confirmVariant={confirmDialog?.confirmVariant ?? "destructive"}
+        isLoading={isClearing || isLeaving || isDeletingGroup}
+        onCancel={() => setConfirmDialog(null)}
+        onConfirm={async () => {
+          const dialog = confirmDialog;
+          setConfirmDialog(null);
+          await dialog?.onConfirm();
+        }}
+      />
     </div>
   );
 }

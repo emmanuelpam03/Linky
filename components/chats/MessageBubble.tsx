@@ -34,6 +34,9 @@ const MessageBubble = ({
     y: number;
   } | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const menuWidth = 192;
+  const menuItemHeight = 42;
+  const menuMargin = 12;
 
   const initials = sender.name
     .split(" ")
@@ -55,7 +58,19 @@ const MessageBubble = ({
     // Don't show if deleted for everyone and already deleted for self
     if (deletedForEveryone && deletedForSelf) return;
     e.preventDefault();
-    setContextMenu({ x: e.clientX, y: e.clientY });
+
+    const optionCount =
+      (!deletedForSelf ? 1 : 0) +
+      (!deletedForEveryone && isOwn ? 1 : 0) +
+      (deletedForEveryone ? 1 : 0);
+    const menuHeight = Math.max(menuItemHeight, optionCount * menuItemHeight);
+    const maxX = Math.max(menuMargin, window.innerWidth - menuWidth - menuMargin);
+    const maxY = Math.max(menuMargin, window.innerHeight - menuHeight - menuMargin);
+
+    setContextMenu({
+      x: Math.min(Math.max(e.clientX, menuMargin), maxX),
+      y: Math.min(Math.max(e.clientY, menuMargin), maxY),
+    });
   };
 
   const handleDeleteForSelf = async () => {
@@ -159,11 +174,11 @@ const MessageBubble = ({
         {/* Context menu */}
         {contextMenu && (
           <div
-            className="fixed z-50 min-w-[160px] overflow-hidden rounded-xl border border-(--color-border-tertiary) bg-(--color-background-primary) shadow-lg"
+            className="fixed z-50 min-w-40 overflow-hidden rounded-xl border border-(--color-border-tertiary) bg-(--color-background-primary) shadow-lg"
             style={{ top: contextMenu.y, left: contextMenu.x }}
           >
-            {/* Delete for self — available to everyone as long as not already deleted for self */}
-            {!isDeletedForEveryone && (
+            {/* Delete for self — only show once, including deleted-for-everyone messages */}
+            {!deletedForSelf && !isDeletedForEveryone && (
               <button
                 onClick={handleDeleteForSelf}
                 className="flex w-full items-center px-4 py-2.5 text-sm text-(--color-text-primary) hover:bg-(--color-background-secondary) transition-colors"
@@ -183,7 +198,7 @@ const MessageBubble = ({
             )}
 
             {/* If deleted for everyone, receiver can still delete for themselves */}
-            {isDeletedForEveryone && !isOwn && (
+            {isDeletedForEveryone && !deletedForSelf && (
               <button
                 onClick={handleDeleteForSelf}
                 className="flex w-full items-center px-4 py-2.5 text-sm text-(--color-text-primary) hover:bg-(--color-background-secondary) transition-colors"

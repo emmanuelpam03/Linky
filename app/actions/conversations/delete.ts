@@ -21,8 +21,3 @@ export async function deleteConversationForSelf(conversationId: string) {
 
   return { success: true };
 }
-
-export async function blockUser(blockedUserId: string) {
-  // Placeholder — implement when block system is built
-  return { success: true };
-}

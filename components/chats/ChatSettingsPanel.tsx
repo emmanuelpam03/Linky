@@ -1,13 +1,19 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { X, Loader2, FileText, Image as ImageIcon } from "lucide-react";
+import {
+  X,
+  Loader2,
+  Image as ImageIcon,
+  FileText,
+  Link as LinkIcon,
+} from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import type { ConversationDetail } from "@/types";
-// import { deleteConversationForSelf } from "@/app/actions/conversations/delete";
 import {
   getSharedMedia,
   getSharedFiles,
+  getSharedLinks,
 } from "@/app/actions/conversations/media";
 import Image from "next/image";
 
@@ -19,8 +25,8 @@ type SharedFile = {
   fileSize: number | null;
   createdAt: Date;
 };
-
-type Tab = "media" | "files";
+type SharedLink = { id: string; url: string; createdAt: Date };
+type Tab = "media" | "files" | "links";
 
 type ChatSettingsPanelProps = {
   conversation: ConversationDetail;
@@ -41,41 +47,35 @@ export default function ChatSettingsPanel({
   const [tab, setTab] = useState<Tab>("media");
   const [media, setMedia] = useState<SharedMedia[]>([]);
   const [files, setFiles] = useState<SharedFile[]>([]);
-  const [isLoadingMedia, setIsLoadingMedia] = useState(true);
-  const [isLoadingFiles, setIsLoadingFiles] = useState(true);
+  const [links, setLinks] = useState<SharedLink[]>([]);
+  const [isLoadingMedia, setIsLoadingMedia] = useState(false);
+  const [isLoadingFiles, setIsLoadingFiles] = useState(false);
+  const [isLoadingLinks, setIsLoadingLinks] = useState(false);
   const { otherUser } = conversation;
 
   useEffect(() => {
-    let cancelled = false;
-
     const load = async () => {
-      try {
+      if (tab === "media" && media.length === 0) {
         setIsLoadingMedia(true);
+        const r = await getSharedMedia(conversation.id);
+        if (r.success) setMedia(r.data);
+        setIsLoadingMedia(false);
+      }
+      if (tab === "files" && files.length === 0) {
         setIsLoadingFiles(true);
-
-        const [mediaResult, filesResult] = await Promise.all([
-          getSharedMedia(conversation.id),
-          getSharedFiles(conversation.id),
-        ]);
-
-        if (!cancelled) {
-          if (mediaResult.success) setMedia(mediaResult.data);
-          if (filesResult.success) setFiles(filesResult.data);
-        }
-      } finally {
-        if (!cancelled) {
-          setIsLoadingMedia(false);
-          setIsLoadingFiles(false);
-        }
+        const r = await getSharedFiles(conversation.id);
+        if (r.success) setFiles(r.data);
+        setIsLoadingFiles(false);
+      }
+      if (tab === "links" && links.length === 0) {
+        setIsLoadingLinks(true);
+        const r = await getSharedLinks(conversation.id);
+        if (r.success) setLinks(r.data);
+        setIsLoadingLinks(false);
       }
     };
-
-    void load();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [conversation.id]);
+    load();
+  }, [tab, conversation.id, media.length, files.length, links.length]);
 
   const initials =
     otherUser?.name
@@ -88,14 +88,12 @@ export default function ChatSettingsPanel({
 
   return (
     <div className="flex h-full w-72 shrink-0 flex-col border-l border-(--color-border-tertiary) bg-(--color-background-primary)">
-      {/* Header */}
       <div className="flex items-center justify-between border-b border-(--color-border-tertiary) px-4 py-4">
         <h3 className="text-sm font-semibold text-(--color-text-primary)">
           Chat info
         </h3>
         <button
           onClick={onClose}
-          aria-label="Close chat info"
           className="rounded-lg p-1.5 text-(--color-text-tertiary) hover:bg-(--color-background-secondary) transition-colors"
         >
           <X className="size-4" />
@@ -103,7 +101,7 @@ export default function ChatSettingsPanel({
       </div>
 
       <div className="flex-1 overflow-y-auto">
-        {/* User profile */}
+        {/* Profile */}
         <div className="flex flex-col items-center px-4 py-6 border-b border-(--color-border-tertiary)">
           <Avatar size="lg" style={{ width: 72, height: 72 }}>
             {otherUser?.image && (
@@ -126,10 +124,10 @@ export default function ChatSettingsPanel({
           )}
         </div>
 
-        {/* Media / Files tabs */}
+        {/* Tabs */}
         <div className="border-b border-(--color-border-tertiary)">
           <div className="flex">
-            {(["media", "files"] as Tab[]).map((t) => (
+            {(["media", "files", "links"] as Tab[]).map((t) => (
               <button
                 key={t}
                 onClick={() => setTab(t)}
@@ -206,18 +204,50 @@ export default function ChatSettingsPanel({
                     className="flex items-center gap-2 rounded-lg border border-(--color-border-tertiary) px-3 py-2 hover:bg-(--color-background-secondary) transition-colors"
                   >
                     <FileText className="size-4 shrink-0 text-(--color-brand-400)" />
-
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-xs font-medium text-(--color-text-primary)">
                         {f.fileName}
                       </p>
-
                       {f.fileSize && (
                         <p className="text-[10px] text-(--color-text-tertiary)">
                           {formatBytes(f.fileSize)}
                         </p>
                       )}
                     </div>
+                  </a>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {tab === "links" && (
+          <div className="px-3 py-3">
+            {isLoadingLinks ? (
+              <div className="flex justify-center py-6">
+                <Loader2 className="size-5 animate-spin text-(--color-text-tertiary)" />
+              </div>
+            ) : links.length === 0 ? (
+              <div className="flex flex-col items-center py-8 gap-2">
+                <LinkIcon className="size-8 text-(--color-text-tertiary)" />
+                <p className="text-xs text-(--color-text-tertiary)">
+                  No links shared yet
+                </p>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-2">
+                {links.map((l) => (
+                  <a
+                    key={l.id}
+                    href={l.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 rounded-lg border border-(--color-border-tertiary) px-3 py-2 hover:bg-(--color-background-secondary) transition-colors"
+                  >
+                    <LinkIcon className="size-4 shrink-0 text-(--color-brand-400)" />
+                    <p className="truncate text-xs text-(--color-text-primary)">
+                      {l.url}
+                    </p>
                   </a>
                 ))}
               </div>

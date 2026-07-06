@@ -16,6 +16,7 @@ const MessageComposer = ({
 }: MessageComposerProps) => {
   const [text, setText] = useState("");
   const [isSending, setIsSending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleSend = async () => {
     const trimmed = text.trim();
@@ -23,6 +24,7 @@ const MessageComposer = ({
 
     setIsSending(true);
     setText("");
+    setError(null);
 
     try {
       const result = await sendMessage({ conversationId, text: trimmed });
@@ -30,11 +32,11 @@ const MessageComposer = ({
         onMessageSent(result.data as MessageItem);
       } else {
         setText(trimmed); // restore on failure
-        // TODO: surface an error to the user
+        setError("Message could not be sent. Try again.");
       }
     } catch {
       setText(trimmed);
-      // TODO: surface an error to the user
+      setError("Message could not be sent. Try again.");
     } finally {
       setIsSending(false);
     }
@@ -53,7 +55,10 @@ const MessageComposer = ({
         <input
           type="text"
           value={text}
-          onChange={(e) => setText(e.target.value)}
+          onChange={(e) => {
+            setText(e.target.value);
+            if (error) setError(null);
+          }}
           onKeyDown={handleKeyDown}
           placeholder="Type a message..."
           className="flex-1 bg-transparent text-sm text-(--color-text-primary) placeholder:text-(--color-text-tertiary) focus:outline-none"
@@ -71,6 +76,7 @@ const MessageComposer = ({
           )}
         </button>
       </div>
+      {error && <p className="mt-2 text-xs text-(--color-coral-500)">{error}</p>}
     </div>
   );
 };
