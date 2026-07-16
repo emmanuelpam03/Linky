@@ -20,8 +20,28 @@ const VISUAL_EXTENSIONS = [
 ];
 
 function isVisualAttachment(fileName: string | null | undefined, url: string | null | undefined) {
-  const source = `${fileName ?? ""} ${url ?? ""}`.toLowerCase();
-  return VISUAL_EXTENSIONS.some((ext) => source.includes(ext));
+  const extractTerminalExtension = (input: string | null | undefined) => {
+    if (!input) return null;
+    // strip query and fragment
+    const noQuery = input.split(/[?#]/, 1)[0];
+    // if it's a full URL, prefer the pathname
+    let path = noQuery;
+    try {
+      const u = new URL(noQuery);
+      path = u.pathname || path;
+    } catch {
+      // not a valid URL, keep as-is
+    }
+    const lastSegment = path.split("/").pop() || "";
+    const dot = lastSegment.lastIndexOf(".");
+    if (dot === -1) return null;
+    return lastSegment.slice(dot).toLowerCase();
+  };
+
+  const extFromName = extractTerminalExtension(fileName);
+  const extFromUrl = extractTerminalExtension(url);
+
+  return [extFromName, extFromUrl].some((e) => !!e && VISUAL_EXTENSIONS.includes(e));
 }
 
 export async function getSharedMedia(conversationId: string) {
@@ -51,14 +71,14 @@ export async function getSharedMedia(conversationId: string) {
   });
 
   const media = messages.filter((message) =>
-    isVisualAttachment(message.fileName, message.imageUrl ?? message.fileUrl),
+    isVisualAttachment(message.fileName, message.imageUrl || message.fileUrl),
   );
 
   return {
     success: true,
     data: media.map((m) => ({
       id: m.id,
-      imageUrl: m.imageUrl ?? m.fileUrl ?? "",
+      imageUrl: m.imageUrl || m.fileUrl || "",
       createdAt: m.createdAt,
     })),
   };
@@ -93,14 +113,14 @@ export async function getSharedFiles(conversationId: string) {
 
   const files = messages.filter((message) => {
     if (!message.fileUrl && !message.imageUrl) return false;
-    return !isVisualAttachment(message.fileName, message.fileUrl ?? message.imageUrl);
+    return !isVisualAttachment(message.fileName, message.fileUrl || message.imageUrl);
   });
 
   return {
     success: true,
     data: files.map((m) => ({
       id: m.id,
-      fileUrl: m.fileUrl ?? m.imageUrl ?? "",
+      fileUrl: m.fileUrl || m.imageUrl || "",
       fileName: m.fileName ?? "File",
       fileSize: m.fileSize,
       createdAt: m.createdAt,

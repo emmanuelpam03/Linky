@@ -60,6 +60,22 @@ export async function getMessages(
       : {}),
   });
 
+  // If the generated client doesn't expose the `reactions` relation on Message,
+  // fetch reactions separately to avoid runtime errors.
+  const messageIds = raw.map((r) => r.id);
+  let reactionsByMessage: Record<string, { reaction: string; userId: string }[]> = {};
+  if (messageIds.length > 0) {
+    const reactions = await prisma.messageReaction.findMany({
+      where: { messageId: { in: messageIds } },
+      select: { messageId: true, reaction: true, userId: true },
+    });
+    reactionsByMessage = reactions.reduce((acc: any, r) => {
+      acc[r.messageId] = acc[r.messageId] ?? [];
+      acc[r.messageId].push({ reaction: r.reaction, userId: r.userId });
+      return acc;
+    }, {} as Record<string, { reaction: string; userId: string }[]>);
+  }
+
   const messages = raw as unknown as MessageWithSender[];
 
   const hasMore = messages.length > PAGE_SIZE;
@@ -74,6 +90,7 @@ export async function getMessages(
     data: ordered.map((m) => ({
       id: m.id,
       text: m.text,
+      editedAt: (m as any).editedAt ?? null,
       imageUrl: m.imageUrl,
       fileUrl: m.fileUrl,
       fileName: m.fileName,
@@ -84,6 +101,17 @@ export async function getMessages(
       isOwn: m.senderId === userId,
       deletedForEveryone: m.deletedForEveryone,
       deletedForSelf: m.deletedFor?.includes(userId) ?? false,
+      reactions: (reactionsByMessage[m.id] ?? []).reduce((acc: any, r: any) => {
+        const key = r.reaction;
+        const found = acc.find((x: any) => x.reaction === key);
+        if (found) {
+          found.count += 1;
+          if (r.userId === userId) found.reactedByUser = true;
+        } else {
+          acc.push({ reaction: key, count: 1, reactedByUser: r.userId === userId });
+        }
+        return acc;
+      }, [] as any),
     })),
   };
 }

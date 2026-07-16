@@ -3,6 +3,7 @@
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth-session";
 import type { MessageItem } from "@/types";
+import { allowSend } from "@/lib/rateLimit";
 
 const MAX_ATTACHMENT_FILE_SIZE_BYTES = 50 * 1024 * 1024;
 
@@ -79,6 +80,11 @@ export async function sendMessage({
   if (!session?.user) return { success: false, error: "Unauthorized" };
 
   const userId = session.user.id;
+
+  // rate limit check
+  if (!allowSend(userId)) {
+    return { success: false, error: "Rate limit exceeded" };
+  }
 
   const membership = await prisma.conversationMember.findFirst({
     where: { conversationId, userId },

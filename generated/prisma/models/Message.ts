@@ -39,6 +39,7 @@ export type MessageMinAggregateOutputType = {
   conversationId: string | null
   senderId: string | null
   text: string | null
+  editedAt: Date | null
   imageUrl: string | null
   fileUrl: string | null
   fileName: string | null
@@ -53,6 +54,7 @@ export type MessageMaxAggregateOutputType = {
   conversationId: string | null
   senderId: string | null
   text: string | null
+  editedAt: Date | null
   imageUrl: string | null
   fileUrl: string | null
   fileName: string | null
@@ -67,6 +69,7 @@ export type MessageCountAggregateOutputType = {
   conversationId: number
   senderId: number
   text: number
+  editedAt: number
   imageUrl: number
   fileUrl: number
   fileName: number
@@ -92,6 +95,7 @@ export type MessageMinAggregateInputType = {
   conversationId?: true
   senderId?: true
   text?: true
+  editedAt?: true
   imageUrl?: true
   fileUrl?: true
   fileName?: true
@@ -106,6 +110,7 @@ export type MessageMaxAggregateInputType = {
   conversationId?: true
   senderId?: true
   text?: true
+  editedAt?: true
   imageUrl?: true
   fileUrl?: true
   fileName?: true
@@ -120,6 +125,7 @@ export type MessageCountAggregateInputType = {
   conversationId?: true
   senderId?: true
   text?: true
+  editedAt?: true
   imageUrl?: true
   fileUrl?: true
   fileName?: true
@@ -222,6 +228,7 @@ export type MessageGroupByOutputType = {
   conversationId: string
   senderId: string
   text: string | null
+  editedAt: Date | null
   imageUrl: string | null
   fileUrl: string | null
   fileName: string | null
@@ -260,6 +267,7 @@ export type MessageWhereInput = {
   conversationId?: Prisma.StringFilter<"Message"> | string
   senderId?: Prisma.StringFilter<"Message"> | string
   text?: Prisma.StringNullableFilter<"Message"> | string | null
+  editedAt?: Prisma.DateTimeNullableFilter<"Message"> | Date | string | null
   imageUrl?: Prisma.StringNullableFilter<"Message"> | string | null
   fileUrl?: Prisma.StringNullableFilter<"Message"> | string | null
   fileName?: Prisma.StringNullableFilter<"Message"> | string | null
@@ -268,6 +276,7 @@ export type MessageWhereInput = {
   deletedForEveryone?: Prisma.BoolFilter<"Message"> | boolean
   createdAt?: Prisma.DateTimeFilter<"Message"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Message"> | Date | string
+  reactions?: Prisma.MessageReactionListRelationFilter
   conversation?: Prisma.XOR<Prisma.ConversationScalarRelationFilter, Prisma.ConversationWhereInput>
   sender?: Prisma.XOR<Prisma.UserScalarRelationFilter, Prisma.UserWhereInput>
 }
@@ -277,6 +286,7 @@ export type MessageOrderByWithRelationInput = {
   conversationId?: Prisma.SortOrder
   senderId?: Prisma.SortOrder
   text?: Prisma.SortOrderInput | Prisma.SortOrder
+  editedAt?: Prisma.SortOrderInput | Prisma.SortOrder
   imageUrl?: Prisma.SortOrderInput | Prisma.SortOrder
   fileUrl?: Prisma.SortOrderInput | Prisma.SortOrder
   fileName?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -285,6 +295,7 @@ export type MessageOrderByWithRelationInput = {
   deletedForEveryone?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+  reactions?: Prisma.MessageReactionOrderByRelationAggregateInput
   conversation?: Prisma.ConversationOrderByWithRelationInput
   sender?: Prisma.UserOrderByWithRelationInput
 }
@@ -297,6 +308,7 @@ export type MessageWhereUniqueInput = Prisma.AtLeast<{
   conversationId?: Prisma.StringFilter<"Message"> | string
   senderId?: Prisma.StringFilter<"Message"> | string
   text?: Prisma.StringNullableFilter<"Message"> | string | null
+  editedAt?: Prisma.DateTimeNullableFilter<"Message"> | Date | string | null
   imageUrl?: Prisma.StringNullableFilter<"Message"> | string | null
   fileUrl?: Prisma.StringNullableFilter<"Message"> | string | null
   fileName?: Prisma.StringNullableFilter<"Message"> | string | null
@@ -305,6 +317,7 @@ export type MessageWhereUniqueInput = Prisma.AtLeast<{
   deletedForEveryone?: Prisma.BoolFilter<"Message"> | boolean
   createdAt?: Prisma.DateTimeFilter<"Message"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Message"> | Date | string
+  reactions?: Prisma.MessageReactionListRelationFilter
   conversation?: Prisma.XOR<Prisma.ConversationScalarRelationFilter, Prisma.ConversationWhereInput>
   sender?: Prisma.XOR<Prisma.UserScalarRelationFilter, Prisma.UserWhereInput>
 }, "id">
@@ -314,6 +327,7 @@ export type MessageOrderByWithAggregationInput = {
   conversationId?: Prisma.SortOrder
   senderId?: Prisma.SortOrder
   text?: Prisma.SortOrderInput | Prisma.SortOrder
+  editedAt?: Prisma.SortOrderInput | Prisma.SortOrder
   imageUrl?: Prisma.SortOrderInput | Prisma.SortOrder
   fileUrl?: Prisma.SortOrderInput | Prisma.SortOrder
   fileName?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -337,6 +351,7 @@ export type MessageScalarWhereWithAggregatesInput = {
   conversationId?: Prisma.StringWithAggregatesFilter<"Message"> | string
   senderId?: Prisma.StringWithAggregatesFilter<"Message"> | string
   text?: Prisma.StringNullableWithAggregatesFilter<"Message"> | string | null
+  editedAt?: Prisma.DateTimeNullableWithAggregatesFilter<"Message"> | Date | string | null
   imageUrl?: Prisma.StringNullableWithAggregatesFilter<"Message"> | string | null
   fileUrl?: Prisma.StringNullableWithAggregatesFilter<"Message"> | string | null
   fileName?: Prisma.StringNullableWithAggregatesFilter<"Message"> | string | null
@@ -350,6 +365,7 @@ export type MessageScalarWhereWithAggregatesInput = {
 export type MessageCreateInput = {
   id?: string
   text?: string | null
+  editedAt?: Date | string | null
   imageUrl?: string | null
   fileUrl?: string | null
   fileName?: string | null
@@ -358,6 +374,7 @@ export type MessageCreateInput = {
   deletedForEveryone?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
+  reactions?: Prisma.MessageReactionCreateNestedManyWithoutMessageInput
   conversation: Prisma.ConversationCreateNestedOneWithoutMessagesInput
   sender: Prisma.UserCreateNestedOneWithoutSentMessagesInput
 }
@@ -367,6 +384,7 @@ export type MessageUncheckedCreateInput = {
   conversationId: string
   senderId: string
   text?: string | null
+  editedAt?: Date | string | null
   imageUrl?: string | null
   fileUrl?: string | null
   fileName?: string | null
@@ -375,11 +393,13 @@ export type MessageUncheckedCreateInput = {
   deletedForEveryone?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
+  reactions?: Prisma.MessageReactionUncheckedCreateNestedManyWithoutMessageInput
 }
 
 export type MessageUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   text?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  editedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   imageUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   fileUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   fileName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -388,6 +408,7 @@ export type MessageUpdateInput = {
   deletedForEveryone?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  reactions?: Prisma.MessageReactionUpdateManyWithoutMessageNestedInput
   conversation?: Prisma.ConversationUpdateOneRequiredWithoutMessagesNestedInput
   sender?: Prisma.UserUpdateOneRequiredWithoutSentMessagesNestedInput
 }
@@ -397,6 +418,7 @@ export type MessageUncheckedUpdateInput = {
   conversationId?: Prisma.StringFieldUpdateOperationsInput | string
   senderId?: Prisma.StringFieldUpdateOperationsInput | string
   text?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  editedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   imageUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   fileUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   fileName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -405,6 +427,7 @@ export type MessageUncheckedUpdateInput = {
   deletedForEveryone?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  reactions?: Prisma.MessageReactionUncheckedUpdateManyWithoutMessageNestedInput
 }
 
 export type MessageCreateManyInput = {
@@ -412,6 +435,7 @@ export type MessageCreateManyInput = {
   conversationId: string
   senderId: string
   text?: string | null
+  editedAt?: Date | string | null
   imageUrl?: string | null
   fileUrl?: string | null
   fileName?: string | null
@@ -425,6 +449,7 @@ export type MessageCreateManyInput = {
 export type MessageUpdateManyMutationInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   text?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  editedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   imageUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   fileUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   fileName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -440,6 +465,7 @@ export type MessageUncheckedUpdateManyInput = {
   conversationId?: Prisma.StringFieldUpdateOperationsInput | string
   senderId?: Prisma.StringFieldUpdateOperationsInput | string
   text?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  editedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   imageUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   fileUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   fileName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -473,6 +499,7 @@ export type MessageCountOrderByAggregateInput = {
   conversationId?: Prisma.SortOrder
   senderId?: Prisma.SortOrder
   text?: Prisma.SortOrder
+  editedAt?: Prisma.SortOrder
   imageUrl?: Prisma.SortOrder
   fileUrl?: Prisma.SortOrder
   fileName?: Prisma.SortOrder
@@ -492,6 +519,7 @@ export type MessageMaxOrderByAggregateInput = {
   conversationId?: Prisma.SortOrder
   senderId?: Prisma.SortOrder
   text?: Prisma.SortOrder
+  editedAt?: Prisma.SortOrder
   imageUrl?: Prisma.SortOrder
   fileUrl?: Prisma.SortOrder
   fileName?: Prisma.SortOrder
@@ -506,6 +534,7 @@ export type MessageMinOrderByAggregateInput = {
   conversationId?: Prisma.SortOrder
   senderId?: Prisma.SortOrder
   text?: Prisma.SortOrder
+  editedAt?: Prisma.SortOrder
   imageUrl?: Prisma.SortOrder
   fileUrl?: Prisma.SortOrder
   fileName?: Prisma.SortOrder
@@ -517,6 +546,11 @@ export type MessageMinOrderByAggregateInput = {
 
 export type MessageSumOrderByAggregateInput = {
   fileSize?: Prisma.SortOrder
+}
+
+export type MessageScalarRelationFilter = {
+  is?: Prisma.MessageWhereInput
+  isNot?: Prisma.MessageWhereInput
 }
 
 export type MessageCreateNestedManyWithoutSenderInput = {
@@ -620,9 +654,24 @@ export type MessageUpdatedeletedForInput = {
   push?: string | string[]
 }
 
+export type MessageCreateNestedOneWithoutReactionsInput = {
+  create?: Prisma.XOR<Prisma.MessageCreateWithoutReactionsInput, Prisma.MessageUncheckedCreateWithoutReactionsInput>
+  connectOrCreate?: Prisma.MessageCreateOrConnectWithoutReactionsInput
+  connect?: Prisma.MessageWhereUniqueInput
+}
+
+export type MessageUpdateOneRequiredWithoutReactionsNestedInput = {
+  create?: Prisma.XOR<Prisma.MessageCreateWithoutReactionsInput, Prisma.MessageUncheckedCreateWithoutReactionsInput>
+  connectOrCreate?: Prisma.MessageCreateOrConnectWithoutReactionsInput
+  upsert?: Prisma.MessageUpsertWithoutReactionsInput
+  connect?: Prisma.MessageWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.MessageUpdateToOneWithWhereWithoutReactionsInput, Prisma.MessageUpdateWithoutReactionsInput>, Prisma.MessageUncheckedUpdateWithoutReactionsInput>
+}
+
 export type MessageCreateWithoutSenderInput = {
   id?: string
   text?: string | null
+  editedAt?: Date | string | null
   imageUrl?: string | null
   fileUrl?: string | null
   fileName?: string | null
@@ -631,6 +680,7 @@ export type MessageCreateWithoutSenderInput = {
   deletedForEveryone?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
+  reactions?: Prisma.MessageReactionCreateNestedManyWithoutMessageInput
   conversation: Prisma.ConversationCreateNestedOneWithoutMessagesInput
 }
 
@@ -638,6 +688,7 @@ export type MessageUncheckedCreateWithoutSenderInput = {
   id?: string
   conversationId: string
   text?: string | null
+  editedAt?: Date | string | null
   imageUrl?: string | null
   fileUrl?: string | null
   fileName?: string | null
@@ -646,6 +697,7 @@ export type MessageUncheckedCreateWithoutSenderInput = {
   deletedForEveryone?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
+  reactions?: Prisma.MessageReactionUncheckedCreateNestedManyWithoutMessageInput
 }
 
 export type MessageCreateOrConnectWithoutSenderInput = {
@@ -682,6 +734,7 @@ export type MessageScalarWhereInput = {
   conversationId?: Prisma.StringFilter<"Message"> | string
   senderId?: Prisma.StringFilter<"Message"> | string
   text?: Prisma.StringNullableFilter<"Message"> | string | null
+  editedAt?: Prisma.DateTimeNullableFilter<"Message"> | Date | string | null
   imageUrl?: Prisma.StringNullableFilter<"Message"> | string | null
   fileUrl?: Prisma.StringNullableFilter<"Message"> | string | null
   fileName?: Prisma.StringNullableFilter<"Message"> | string | null
@@ -695,6 +748,7 @@ export type MessageScalarWhereInput = {
 export type MessageCreateWithoutConversationInput = {
   id?: string
   text?: string | null
+  editedAt?: Date | string | null
   imageUrl?: string | null
   fileUrl?: string | null
   fileName?: string | null
@@ -703,6 +757,7 @@ export type MessageCreateWithoutConversationInput = {
   deletedForEveryone?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
+  reactions?: Prisma.MessageReactionCreateNestedManyWithoutMessageInput
   sender: Prisma.UserCreateNestedOneWithoutSentMessagesInput
 }
 
@@ -710,6 +765,7 @@ export type MessageUncheckedCreateWithoutConversationInput = {
   id?: string
   senderId: string
   text?: string | null
+  editedAt?: Date | string | null
   imageUrl?: string | null
   fileUrl?: string | null
   fileName?: string | null
@@ -718,6 +774,7 @@ export type MessageUncheckedCreateWithoutConversationInput = {
   deletedForEveryone?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
+  reactions?: Prisma.MessageReactionUncheckedCreateNestedManyWithoutMessageInput
 }
 
 export type MessageCreateOrConnectWithoutConversationInput = {
@@ -746,10 +803,91 @@ export type MessageUpdateManyWithWhereWithoutConversationInput = {
   data: Prisma.XOR<Prisma.MessageUpdateManyMutationInput, Prisma.MessageUncheckedUpdateManyWithoutConversationInput>
 }
 
+export type MessageCreateWithoutReactionsInput = {
+  id?: string
+  text?: string | null
+  editedAt?: Date | string | null
+  imageUrl?: string | null
+  fileUrl?: string | null
+  fileName?: string | null
+  fileSize?: number | null
+  deletedFor?: Prisma.MessageCreatedeletedForInput | string[]
+  deletedForEveryone?: boolean
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  conversation: Prisma.ConversationCreateNestedOneWithoutMessagesInput
+  sender: Prisma.UserCreateNestedOneWithoutSentMessagesInput
+}
+
+export type MessageUncheckedCreateWithoutReactionsInput = {
+  id?: string
+  conversationId: string
+  senderId: string
+  text?: string | null
+  editedAt?: Date | string | null
+  imageUrl?: string | null
+  fileUrl?: string | null
+  fileName?: string | null
+  fileSize?: number | null
+  deletedFor?: Prisma.MessageCreatedeletedForInput | string[]
+  deletedForEveryone?: boolean
+  createdAt?: Date | string
+  updatedAt?: Date | string
+}
+
+export type MessageCreateOrConnectWithoutReactionsInput = {
+  where: Prisma.MessageWhereUniqueInput
+  create: Prisma.XOR<Prisma.MessageCreateWithoutReactionsInput, Prisma.MessageUncheckedCreateWithoutReactionsInput>
+}
+
+export type MessageUpsertWithoutReactionsInput = {
+  update: Prisma.XOR<Prisma.MessageUpdateWithoutReactionsInput, Prisma.MessageUncheckedUpdateWithoutReactionsInput>
+  create: Prisma.XOR<Prisma.MessageCreateWithoutReactionsInput, Prisma.MessageUncheckedCreateWithoutReactionsInput>
+  where?: Prisma.MessageWhereInput
+}
+
+export type MessageUpdateToOneWithWhereWithoutReactionsInput = {
+  where?: Prisma.MessageWhereInput
+  data: Prisma.XOR<Prisma.MessageUpdateWithoutReactionsInput, Prisma.MessageUncheckedUpdateWithoutReactionsInput>
+}
+
+export type MessageUpdateWithoutReactionsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  text?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  editedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  imageUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  fileUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  fileName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  fileSize?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  deletedFor?: Prisma.MessageUpdatedeletedForInput | string[]
+  deletedForEveryone?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  conversation?: Prisma.ConversationUpdateOneRequiredWithoutMessagesNestedInput
+  sender?: Prisma.UserUpdateOneRequiredWithoutSentMessagesNestedInput
+}
+
+export type MessageUncheckedUpdateWithoutReactionsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  conversationId?: Prisma.StringFieldUpdateOperationsInput | string
+  senderId?: Prisma.StringFieldUpdateOperationsInput | string
+  text?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  editedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  imageUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  fileUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  fileName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  fileSize?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  deletedFor?: Prisma.MessageUpdatedeletedForInput | string[]
+  deletedForEveryone?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+}
+
 export type MessageCreateManySenderInput = {
   id?: string
   conversationId: string
   text?: string | null
+  editedAt?: Date | string | null
   imageUrl?: string | null
   fileUrl?: string | null
   fileName?: string | null
@@ -763,6 +901,7 @@ export type MessageCreateManySenderInput = {
 export type MessageUpdateWithoutSenderInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   text?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  editedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   imageUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   fileUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   fileName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -771,6 +910,7 @@ export type MessageUpdateWithoutSenderInput = {
   deletedForEveryone?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  reactions?: Prisma.MessageReactionUpdateManyWithoutMessageNestedInput
   conversation?: Prisma.ConversationUpdateOneRequiredWithoutMessagesNestedInput
 }
 
@@ -778,6 +918,7 @@ export type MessageUncheckedUpdateWithoutSenderInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   conversationId?: Prisma.StringFieldUpdateOperationsInput | string
   text?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  editedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   imageUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   fileUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   fileName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -786,12 +927,14 @@ export type MessageUncheckedUpdateWithoutSenderInput = {
   deletedForEveryone?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  reactions?: Prisma.MessageReactionUncheckedUpdateManyWithoutMessageNestedInput
 }
 
 export type MessageUncheckedUpdateManyWithoutSenderInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   conversationId?: Prisma.StringFieldUpdateOperationsInput | string
   text?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  editedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   imageUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   fileUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   fileName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -806,6 +949,7 @@ export type MessageCreateManyConversationInput = {
   id?: string
   senderId: string
   text?: string | null
+  editedAt?: Date | string | null
   imageUrl?: string | null
   fileUrl?: string | null
   fileName?: string | null
@@ -819,6 +963,7 @@ export type MessageCreateManyConversationInput = {
 export type MessageUpdateWithoutConversationInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   text?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  editedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   imageUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   fileUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   fileName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -827,6 +972,7 @@ export type MessageUpdateWithoutConversationInput = {
   deletedForEveryone?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  reactions?: Prisma.MessageReactionUpdateManyWithoutMessageNestedInput
   sender?: Prisma.UserUpdateOneRequiredWithoutSentMessagesNestedInput
 }
 
@@ -834,6 +980,7 @@ export type MessageUncheckedUpdateWithoutConversationInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   senderId?: Prisma.StringFieldUpdateOperationsInput | string
   text?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  editedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   imageUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   fileUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   fileName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -842,12 +989,14 @@ export type MessageUncheckedUpdateWithoutConversationInput = {
   deletedForEveryone?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  reactions?: Prisma.MessageReactionUncheckedUpdateManyWithoutMessageNestedInput
 }
 
 export type MessageUncheckedUpdateManyWithoutConversationInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   senderId?: Prisma.StringFieldUpdateOperationsInput | string
   text?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  editedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   imageUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   fileUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   fileName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -858,6 +1007,35 @@ export type MessageUncheckedUpdateManyWithoutConversationInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
+
+/**
+ * Count Type MessageCountOutputType
+ */
+
+export type MessageCountOutputType = {
+  reactions: number
+}
+
+export type MessageCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  reactions?: boolean | MessageCountOutputTypeCountReactionsArgs
+}
+
+/**
+ * MessageCountOutputType without action
+ */
+export type MessageCountOutputTypeDefaultArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the MessageCountOutputType
+   */
+  select?: Prisma.MessageCountOutputTypeSelect<ExtArgs> | null
+}
+
+/**
+ * MessageCountOutputType without action
+ */
+export type MessageCountOutputTypeCountReactionsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.MessageReactionWhereInput
+}
 
 
 export type MessageSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
@@ -865,6 +1043,7 @@ export type MessageSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs 
   conversationId?: boolean
   senderId?: boolean
   text?: boolean
+  editedAt?: boolean
   imageUrl?: boolean
   fileUrl?: boolean
   fileName?: boolean
@@ -873,8 +1052,10 @@ export type MessageSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs 
   deletedForEveryone?: boolean
   createdAt?: boolean
   updatedAt?: boolean
+  reactions?: boolean | Prisma.Message$reactionsArgs<ExtArgs>
   conversation?: boolean | Prisma.ConversationDefaultArgs<ExtArgs>
   sender?: boolean | Prisma.UserDefaultArgs<ExtArgs>
+  _count?: boolean | Prisma.MessageCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["message"]>
 
 export type MessageSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
@@ -882,6 +1063,7 @@ export type MessageSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Exten
   conversationId?: boolean
   senderId?: boolean
   text?: boolean
+  editedAt?: boolean
   imageUrl?: boolean
   fileUrl?: boolean
   fileName?: boolean
@@ -899,6 +1081,7 @@ export type MessageSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Exten
   conversationId?: boolean
   senderId?: boolean
   text?: boolean
+  editedAt?: boolean
   imageUrl?: boolean
   fileUrl?: boolean
   fileName?: boolean
@@ -916,6 +1099,7 @@ export type MessageSelectScalar = {
   conversationId?: boolean
   senderId?: boolean
   text?: boolean
+  editedAt?: boolean
   imageUrl?: boolean
   fileUrl?: boolean
   fileName?: boolean
@@ -926,10 +1110,12 @@ export type MessageSelectScalar = {
   updatedAt?: boolean
 }
 
-export type MessageOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "conversationId" | "senderId" | "text" | "imageUrl" | "fileUrl" | "fileName" | "fileSize" | "deletedFor" | "deletedForEveryone" | "createdAt" | "updatedAt", ExtArgs["result"]["message"]>
+export type MessageOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "conversationId" | "senderId" | "text" | "editedAt" | "imageUrl" | "fileUrl" | "fileName" | "fileSize" | "deletedFor" | "deletedForEveryone" | "createdAt" | "updatedAt", ExtArgs["result"]["message"]>
 export type MessageInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  reactions?: boolean | Prisma.Message$reactionsArgs<ExtArgs>
   conversation?: boolean | Prisma.ConversationDefaultArgs<ExtArgs>
   sender?: boolean | Prisma.UserDefaultArgs<ExtArgs>
+  _count?: boolean | Prisma.MessageCountOutputTypeDefaultArgs<ExtArgs>
 }
 export type MessageIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   conversation?: boolean | Prisma.ConversationDefaultArgs<ExtArgs>
@@ -943,6 +1129,7 @@ export type MessageIncludeUpdateManyAndReturn<ExtArgs extends runtime.Types.Exte
 export type $MessagePayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   name: "Message"
   objects: {
+    reactions: Prisma.$MessageReactionPayload<ExtArgs>[]
     conversation: Prisma.$ConversationPayload<ExtArgs>
     sender: Prisma.$UserPayload<ExtArgs>
   }
@@ -951,6 +1138,7 @@ export type $MessagePayload<ExtArgs extends runtime.Types.Extensions.InternalArg
     conversationId: string
     senderId: string
     text: string | null
+    editedAt: Date | null
     imageUrl: string | null
     fileUrl: string | null
     fileName: string | null
@@ -1353,6 +1541,7 @@ readonly fields: MessageFieldRefs;
  */
 export interface Prisma__MessageClient<T, Null = never, ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
   readonly [Symbol.toStringTag]: "PrismaPromise"
+  reactions<T extends Prisma.Message$reactionsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Message$reactionsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$MessageReactionPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   conversation<T extends Prisma.ConversationDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.ConversationDefaultArgs<ExtArgs>>): Prisma.Prisma__ConversationClient<runtime.Types.Result.GetResult<Prisma.$ConversationPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
   sender<T extends Prisma.UserDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.UserDefaultArgs<ExtArgs>>): Prisma.Prisma__UserClient<runtime.Types.Result.GetResult<Prisma.$UserPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
   /**
@@ -1388,6 +1577,7 @@ export interface MessageFieldRefs {
   readonly conversationId: Prisma.FieldRef<"Message", 'String'>
   readonly senderId: Prisma.FieldRef<"Message", 'String'>
   readonly text: Prisma.FieldRef<"Message", 'String'>
+  readonly editedAt: Prisma.FieldRef<"Message", 'DateTime'>
   readonly imageUrl: Prisma.FieldRef<"Message", 'String'>
   readonly fileUrl: Prisma.FieldRef<"Message", 'String'>
   readonly fileName: Prisma.FieldRef<"Message", 'String'>
@@ -1794,6 +1984,30 @@ export type MessageDeleteManyArgs<ExtArgs extends runtime.Types.Extensions.Inter
    * Limit how many Messages to delete.
    */
   limit?: number
+}
+
+/**
+ * Message.reactions
+ */
+export type Message$reactionsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the MessageReaction
+   */
+  select?: Prisma.MessageReactionSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the MessageReaction
+   */
+  omit?: Prisma.MessageReactionOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.MessageReactionInclude<ExtArgs> | null
+  where?: Prisma.MessageReactionWhereInput
+  orderBy?: Prisma.MessageReactionOrderByWithRelationInput | Prisma.MessageReactionOrderByWithRelationInput[]
+  cursor?: Prisma.MessageReactionWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.MessageReactionScalarFieldEnum | Prisma.MessageReactionScalarFieldEnum[]
 }
 
 /**

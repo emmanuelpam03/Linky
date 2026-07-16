@@ -245,6 +245,8 @@ export type MessageItem = {
   isOwn: boolean;
   deletedForEveryone: boolean;
   deletedForSelf: boolean;
+  editedAt?: Date | null;
+  reactions?: { reaction: string; count: number; reactedByUser?: boolean }[];
 };
 
 // ── Prisma intermediate types ─────────────────────────────────────────────────

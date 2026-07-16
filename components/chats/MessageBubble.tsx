@@ -8,6 +8,7 @@ import {
   deleteMessageForEveryone,
   deleteMessageForSelf,
 } from "@/app/actions/messages/delete";
+import { addReaction, removeReaction } from "@/app/actions/messages/reactions";
 import { FileDown } from "lucide-react";
 import FilePreviewModal from "./FilePreviewModal";
 
@@ -70,6 +71,32 @@ const MessageBubble = ({
     minute: "2-digit",
     hour12: true,
   }).format(new Date(createdAt));
+
+  const edited = (message as any).editedAt;
+
+  const handleToggleHeart = async () => {
+    const heart = "❤️";
+    const existing = (message.reactions ?? []).find((r) => r.reaction === heart);
+    if (existing && existing.reactedByUser) {
+      await removeReaction(id, heart);
+      onMessageUpdated(id, {
+        reactions: (message.reactions ?? []).map((r) =>
+          r.reaction === heart ? { ...r, count: Math.max(0, r.count - 1), reactedByUser: false } : r,
+        ),
+      });
+    } else {
+      await addReaction(id, heart);
+      const updated = (message.reactions ?? []).slice();
+      const found = updated.find((r) => r.reaction === heart);
+      if (found) {
+        found.count += 1;
+        found.reactedByUser = true;
+      } else {
+        updated.push({ reaction: heart, count: 1, reactedByUser: true });
+      }
+      onMessageUpdated(id, { reactions: updated });
+    }
+  };
 
   const handleContextMenu = (e: React.MouseEvent) => {
     // Don't show context menu if already deleted for self with no everyone deletion
@@ -182,6 +209,9 @@ const MessageBubble = ({
                   )}
                 >
                   {text}
+                  {edited && (
+                    <span className="ml-2 text-xs opacity-70">· edited</span>
+                  )}
                 </div>
               )}
               {(imageUrl ?? fileUrl) && fileName && (
@@ -218,6 +248,27 @@ const MessageBubble = ({
           <span className="mx-1 text-[10px] text-(--color-text-tertiary)">
             {time}
           </span>
+
+          {/* Reactions */}
+          <div className="flex gap-2 items-center mt-1">
+            {(message.reactions ?? []).map((r) => (
+              <button
+                key={r.reaction}
+                onClick={handleToggleHeart}
+                className={cn(
+                  "text-sm",
+                  r.reactedByUser ? "font-semibold" : "opacity-80",
+                )}
+              >
+                {r.reaction} {r.count}
+              </button>
+            ))}
+
+            {/* quick heart action */}
+            <button onClick={handleToggleHeart} className="text-sm opacity-80">
+              ❤️
+            </button>
+          </div>
         </div>
 
         {/* Context menu */}

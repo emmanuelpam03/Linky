@@ -28,6 +28,7 @@ model User {
   createdConversations Conversation[]       @relation("CreatedConversations")
   conversationMembers  ConversationMember[]
   sentMessages         Message[]            @relation("SentMessages")
+  messageReactions     MessageReaction[]
   blockedUsers         Block[]              @relation("BlockedByUser")
   blockedByUsers       Block[]              @relation("BlockedUser")
 
@@ -104,8 +105,8 @@ model FriendRequest {
   createdAt  DateTime            @default(now())
   updatedAt  DateTime            @updatedAt
 
-  sender     User                @relation("SentRequests", fields: [senderId], references: [id], onDelete: Cascade)
-  receiver   User                @relation("ReceivedRequests", fields: [receiverId], references: [id], onDelete: Cascade)
+  sender   User @relation("SentRequests", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver User @relation("ReceivedRequests", fields: [receiverId], references: [id], onDelete: Cascade)
 
   // Prevent duplicate requests between same two users
   @@unique([senderId, receiverId])
@@ -126,8 +127,8 @@ model Friend {
   friendId  String
   createdAt DateTime @default(now())
 
-  user      User     @relation("FriendsAsUser", fields: [userId], references: [id], onDelete: Cascade)
-  friend    User     @relation("FriendsAsFriend", fields: [friendId], references: [id], onDelete: Cascade)
+  user   User @relation("FriendsAsUser", fields: [userId], references: [id], onDelete: Cascade)
+  friend User @relation("FriendsAsFriend", fields: [friendId], references: [id], onDelete: Cascade)
 
   // Prevent duplicate friendships
   @@unique([userId, friendId])
@@ -137,13 +138,13 @@ model Friend {
 }
 
 model Conversation {
-  id        String           @id @default(cuid())
-  type      ConversationType @default(DIRECT)
-  name      String?
-  image     String?
-  description String?        // group description
-  createdBy String
-  pairKey   String?          @unique // sorted userId pair for DIRECT chats
+  id          String           @id @default(cuid())
+  type        ConversationType @default(DIRECT)
+  name        String?
+  image       String?
+  description String? // group description
+  createdBy   String
+  pairKey     String?          @unique // sorted userId pair for DIRECT chats
 
   lastMessageId String?
   lastMessageAt DateTime?
@@ -171,7 +172,8 @@ model ConversationMember {
   userId         String
   role           MemberRole   @default(MEMBER)
   joinedAt       DateTime     @default(now())
-  isMuted   Boolean  @default(false)
+  lastReadAt     DateTime?
+  isMuted        Boolean      @default(false)
   conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -187,18 +189,22 @@ enum MemberRole {
 }
 
 model Message {
-  id             String   @id @default(cuid())
-  conversationId String
-  senderId       String
-  text           String?
-  imageUrl       String?
-  fileUrl        String?
-  fileName       String?
-  fileSize       Int?
-  deletedFor     String[] @default([]) // userIds who deleted for themselves
-  deletedForEveryone Boolean @default(false)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  id                 String    @id @default(cuid())
+  conversationId     String
+  senderId           String
+  text               String?
+  editedAt           DateTime?
+  imageUrl           String?
+  fileUrl            String?
+  fileName           String?
+  fileSize           Int?
+  deletedFor         String[]  @default([]) // userIds who deleted for themselves
+  deletedForEveryone Boolean   @default(false)
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  // reactions relation
+  reactions MessageReaction[]
 
   conversation Conversation @relation("ConversationMessages", fields: [conversationId], references: [id], onDelete: Cascade)
   sender       User         @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
@@ -206,4 +212,20 @@ model Message {
   @@index([conversationId])
   @@index([senderId])
   @@map("message")
+}
+
+model MessageReaction {
+  id        String   @id @default(cuid())
+  messageId String
+  userId    String
+  reaction  String
+  createdAt DateTime @default(now())
+
+  message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, userId, reaction])
+  @@index([messageId])
+  @@index([userId])
+  @@map("message_reaction")
 }
