@@ -1,5 +1,6 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth-session";
 import {
@@ -79,6 +80,11 @@ export async function uploadGroupAvatar(
       where: { id: conversationId },
       data: { image: result.url },
     });
+
+    revalidatePath("/groups");
+    revalidatePath(`/groups/${conversationId}`);
+    revalidatePath("/chats");
+    revalidatePath(`/chats/${conversationId}`);
 
     return { success: true, imageUrl: result.url };
   } catch {
