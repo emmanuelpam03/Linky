@@ -28,7 +28,9 @@ const FilePreviewModal = ({
     return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + " " + sizes[i];
   };
 
-  const isPdf = fileName.toLowerCase().endsWith(".pdf");
+  const lowerFileName = fileName.toLowerCase();
+  const isPdf = lowerFileName.endsWith(".pdf");
+  const isImage = /\.(jpe?g|png|webp)$/i.test(lowerFileName);
   const fileExtension = fileName.split(".").pop()?.toUpperCase() || "FILE";
 
   return (
@@ -41,7 +43,7 @@ const FilePreviewModal = ({
 
       {/* Modal */}
       <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4">
-        <div className="w-full max-w-6xl h-[98vh] sm:h-[95vh] bg-(--color-background-primary) rounded-2xl shadow-2xl flex flex-col overflow-hidden">
+        <div className="flex w-full max-w-6xl max-h-[98vh] min-h-[70vh] flex-col overflow-hidden rounded-2xl bg-(--color-background-primary) shadow-2xl sm:max-h-[95vh]">
           {/* Header */}
           <div className="flex items-center justify-between border-b border-(--color-border-tertiary) px-6 py-4">
             <div className="flex-1 min-w-0">
@@ -67,26 +69,34 @@ const FilePreviewModal = ({
             {isPdf ? (
               <iframe
                 src={fileUrl}
-                className="w-full h-full border-none"
+                className="h-full min-h-[60vh] w-full border-none"
                 title={fileName}
               />
+            ) : isImage ? (
+              <div className="flex h-full items-center justify-center bg-(--color-background-secondary) p-4">
+                <img
+                  src={fileUrl}
+                  alt={fileName}
+                  className="h-[70vh] w-auto max-w-full rounded-xl object-contain"
+                />
+              </div>
             ) : (
-              <div className="flex flex-col items-center justify-center h-full p-8">
-                <div className="flex items-center justify-center size-16 rounded-full bg-(--color-background-secondary) mb-4">
+              <div className="flex h-full flex-col items-center justify-center p-8">
+                <div className="mb-4 flex size-16 items-center justify-center rounded-full bg-(--color-background-secondary)">
                   <span className="text-2xl font-bold text-(--color-brand-400)">
                     {fileExtension.slice(0, 1)}
                   </span>
                 </div>
-                <h3 className="text-lg font-semibold text-(--color-text-primary) mb-1">
+                <h3 className="mb-1 text-lg font-semibold text-(--color-text-primary)">
                   {fileExtension} Document
                 </h3>
-                <p className="text-sm text-(--color-text-tertiary) text-center mb-6">
+                <p className="mb-6 text-center text-sm text-(--color-text-tertiary)">
                   Preview not available for this file type
                 </p>
                 <a
                   href={fileUrl}
                   download={fileName}
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-(--color-brand-400) text-white hover:bg-(--color-brand-500) transition-colors font-medium"
+                  className="inline-flex items-center gap-2 rounded-lg bg-(--color-brand-400) px-4 py-2 font-medium text-white transition-colors hover:bg-(--color-brand-500)"
                 >
                   Download File
                 </a>
