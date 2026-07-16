@@ -15,6 +15,10 @@ export const ALLOWED_DOCUMENT_TYPES = [
   "image/png",
   "image/webp",
   "image/jpg",
+  "image/gif",
+  "video/mp4",
+  "video/webm",
+  "video/quicktime",
 ] as const;
 
 export type DocumentFormat =
@@ -27,7 +31,11 @@ export type DocumentFormat =
   | "csv"
   | "jpeg"
   | "png"
-  | "webp";
+  | "webp"
+  | "gif"
+  | "mp4"
+  | "webm"
+  | "mov";
 
 export type DocumentValidationError = {
   success: false;
@@ -66,6 +74,30 @@ async function detectDocumentFormat(
     bytes[1] === 0x4b &&
     bytes[2] === 0x03 &&
     bytes[3] === 0x04;
+  const isGifSignature =
+    bytes.length >= 6 &&
+    bytes[0] === 0x47 &&
+    bytes[1] === 0x49 &&
+    bytes[2] === 0x46 &&
+    bytes[3] === 0x38 &&
+    (bytes[4] === 0x37 || bytes[4] === 0x39) &&
+    bytes[5] === 0x61;
+  const isMp4Signature =
+    bytes.length >= 12 &&
+    bytes[4] === 0x66 &&
+    bytes[5] === 0x74 &&
+    bytes[6] === 0x79 &&
+    bytes[7] === 0x70;
+  const isWebmSignature =
+    bytes.length >= 12 &&
+    bytes[0] === 0x52 &&
+    bytes[1] === 0x49 &&
+    bytes[2] === 0x46 &&
+    bytes[3] === 0x46 &&
+    bytes[8] === 0x57 &&
+    bytes[9] === 0x45 &&
+    bytes[10] === 0x42 &&
+    bytes[11] === 0x4d;
 
   if (mimeType.includes("pdf") || ext === "pdf") {
     return isPdfSignature ? "pdf" : null;
@@ -75,12 +107,28 @@ async function detectDocumentFormat(
     return bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 ? "jpeg" : null;
   }
 
+  if (mimeType.includes("gif") || ext === "gif") {
+    return isGifSignature ? "gif" : null;
+  }
+
   if (mimeType.includes("png") || ext === "png") {
     return bytes.length >= 8 && bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47 ? "png" : null;
   }
 
   if (mimeType.includes("webp") || ext === "webp") {
     return bytes.length >= 12 && bytes[0] === 0x52 && bytes[1] === 0x49 && bytes[2] === 0x46 && bytes[3] === 0x46 && bytes[8] === 0x57 && bytes[9] === 0x45 && bytes[10] === 0x42 && bytes[11] === 0x50 ? "webp" : null;
+  }
+
+  if (mimeType.includes("webm") || ext === "webm") {
+    return isWebmSignature ? "webm" : null;
+  }
+
+  if (mimeType.includes("quicktime") || ext === "mov") {
+    return isMp4Signature ? "mov" : null;
+  }
+
+  if (mimeType.includes("mp4") || ext === "mp4") {
+    return isMp4Signature ? "mp4" : null;
   }
 
   if (
@@ -135,7 +183,7 @@ export async function validateDocumentFile(
     return {
       success: false,
       error:
-        "Only PDF, Word, Excel, plain text, and CSV files are allowed",
+        "Only PDF, Word, Excel, plain text, CSV, image, and video files are allowed",
     };
   }
 

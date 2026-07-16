@@ -75,9 +75,18 @@ export async function uploadDocumentToMessage(
     };
   }
 
-  const isImage = ["jpeg", "jpg", "png", "webp"].includes(validationResult.format);
-  const folder = isImage ? "converse/images" : "converse/documents";
-  const publicIdPrefix = isImage ? "img" : "doc";
+  const isMedia = [
+    "jpeg",
+    "jpg",
+    "png",
+    "webp",
+    "gif",
+    "mp4",
+    "mov",
+    "webm",
+  ].includes(validationResult.format);
+  const folder = isMedia ? "converse/images" : "converse/documents";
+  const publicIdPrefix = isMedia ? "img" : "doc";
 
   try {
     const result = await uploadDocumentToImageKit(

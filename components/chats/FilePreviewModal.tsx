@@ -1,7 +1,7 @@
 "use client";
 
+import Image from "next/image";
 import { X } from "lucide-react";
-import { cn } from "@/lib/utils";
 
 type FilePreviewModalProps = {
   isOpen: boolean;
@@ -31,6 +31,7 @@ const FilePreviewModal = ({
   const lowerFileName = fileName.toLowerCase();
   const isPdf = lowerFileName.endsWith(".pdf");
   const isImage = /\.(jpe?g|png|gif|webp|bmp|svg)$/i.test(lowerFileName);
+  const isVideo = /\.(mp4|mov|webm)$/i.test(lowerFileName);
   const fileExtension = fileName.split(".").pop()?.toUpperCase() || "FILE";
 
   return (
@@ -72,13 +73,25 @@ const FilePreviewModal = ({
                 className="h-full min-h-[60vh] w-full border-none"
                 title={fileName}
               />
-            ) : isImage ? (
+            ) : isVideo ? (
               <div className="flex h-full items-center justify-center bg-(--color-background-secondary) p-4">
-                <img
+                <video
+                  controls
                   src={fileUrl}
-                  alt={fileName}
                   className="h-[70vh] w-auto max-w-full rounded-xl object-contain"
                 />
+              </div>
+            ) : isImage ? (
+              <div className="flex h-full items-center justify-center bg-(--color-background-secondary) p-4">
+                <div className="relative h-[70vh] w-full max-w-full">
+                  <Image
+                    src={fileUrl}
+                    alt={fileName}
+                    fill
+                    sizes="(max-width: 1024px) 100vw, 70vh"
+                    className="rounded-xl object-contain"
+                  />
+                </div>
               </div>
             ) : (
               <div className="flex h-full flex-col items-center justify-center p-8">
