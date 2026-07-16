@@ -39,6 +39,7 @@ const MessageComposer = ({
     const originalFile = selectedFile;
 
     let fileUrl: string | undefined;
+    let imageUrl: string | undefined;
     let fileName: string | undefined;
     let fileSize: number | undefined;
 
@@ -59,6 +60,7 @@ const MessageComposer = ({
         }
 
         fileUrl = uploadResult.fileUrl ?? undefined;
+        imageUrl = uploadResult.imageUrl ?? undefined;
         fileName = uploadResult.fileName ?? undefined;
         fileSize = uploadResult.fileSize ?? undefined;
       }
@@ -67,6 +69,7 @@ const MessageComposer = ({
         conversationId,
         text: trimmed || undefined,
         fileUrl,
+        imageUrl,
         fileName,
         fileSize,
       });
@@ -76,9 +79,10 @@ const MessageComposer = ({
         setText("");
         setSelectedFile(null);
       } else {
-        if (fileUrl) {
+        const uploadedUrl = imageUrl ?? fileUrl;
+        if (uploadedUrl) {
           try {
-            await deleteUploadedDocument(fileUrl);
+            await deleteUploadedDocument(uploadedUrl);
           } catch {
             // Ignore cleanup failures so the original send error remains visible.
           }
@@ -89,9 +93,10 @@ const MessageComposer = ({
         setError("Message could not be sent. Try again.");
       }
     } catch {
-      if (fileUrl) {
+      const uploadedUrl = imageUrl ?? fileUrl;
+      if (uploadedUrl) {
         try {
-          await deleteUploadedDocument(fileUrl);
+          await deleteUploadedDocument(uploadedUrl);
         } catch {
           // Ignore cleanup failures so the original send error remains visible.
         }

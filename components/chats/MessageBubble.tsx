@@ -26,6 +26,7 @@ const MessageBubble = ({
     id,
     text,
     fileUrl,
+    imageUrl,
     fileName,
     fileSize,
     isOwn,
@@ -183,11 +184,11 @@ const MessageBubble = ({
                   {text}
                 </div>
               )}
-              {fileUrl && fileName && (
+              {(imageUrl ?? fileUrl) && fileName && (
                 <button
                   onClick={() =>
                     setPreviewFile({
-                      fileUrl,
+                      fileUrl: imageUrl ?? fileUrl ?? "",
                       fileName,
                       fileSize: fileSize ?? undefined,
                     })

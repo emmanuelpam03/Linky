@@ -7,15 +7,18 @@ import type { MessageItem } from "@/types";
 const MAX_ATTACHMENT_FILE_SIZE_BYTES = 50 * 1024 * 1024;
 
 function validateAttachmentMetadata({
+  imageUrl,
   fileUrl,
   fileName,
   fileSize,
 }: {
+  imageUrl?: string;
   fileUrl?: string;
   fileName?: string;
   fileSize?: number;
 }) {
-  if (!fileUrl) return null;
+  const attachmentUrl = imageUrl ?? fileUrl;
+  if (!attachmentUrl || (imageUrl && fileUrl)) return null;
 
   if (!fileName?.trim() || fileName.includes("/") || fileName.includes("\\")) {
     return null;
@@ -31,7 +34,7 @@ function validateAttachmentMetadata({
   }
 
   try {
-    const parsedFileUrl = new URL(fileUrl);
+    const parsedFileUrl = new URL(attachmentUrl);
     const parsedEndpoint = new URL(imageKitEndpoint);
 
     if (parsedFileUrl.protocol !== "https:" || parsedEndpoint.protocol !== "https:") {
@@ -50,7 +53,8 @@ function validateAttachmentMetadata({
   }
 
   return {
-    fileUrl,
+    imageUrl: imageUrl ?? null,
+    fileUrl: fileUrl ?? null,
     fileName: fileName.trim(),
     fileSize,
   };
@@ -60,12 +64,14 @@ export async function sendMessage({
   conversationId,
   text,
   fileUrl,
+  imageUrl,
   fileName,
   fileSize,
 }: {
   conversationId: string;
   text?: string;
   fileUrl?: string;
+  imageUrl?: string;
   fileName?: string;
   fileSize?: number;
 }) {
@@ -108,13 +114,18 @@ export async function sendMessage({
   }
 
   const trimmedText = text?.trim() ?? "";
-  const attachment = validateAttachmentMetadata({ fileUrl, fileName, fileSize });
+  const attachment = validateAttachmentMetadata({
+    imageUrl,
+    fileUrl,
+    fileName,
+    fileSize,
+  });
 
   if (!trimmedText && !attachment) {
     return { success: false, error: "Message must have text or a file" };
   }
 
-  if (fileUrl && !attachment) {
+  if ((fileUrl || imageUrl) && !attachment) {
     return { success: false, error: "Invalid attachment metadata" };
   }
 
@@ -123,6 +134,7 @@ export async function sendMessage({
       conversationId,
       senderId: userId,
       text: trimmedText || null,
+      imageUrl: attachment?.imageUrl || null,
       fileUrl: attachment?.fileUrl || null,
       fileName: attachment?.fileName || null,
       fileSize: attachment?.fileSize ?? null,

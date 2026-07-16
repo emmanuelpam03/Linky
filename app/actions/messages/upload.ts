@@ -66,15 +66,25 @@ export async function uploadDocumentToMessage(
   const file = formData.get("document") as File;
   const validationResult = await validateDocumentFile(file);
   if (!validationResult.success) {
-    return { ...validationResult, fileUrl: null, fileName: null, fileSize: null };
+    return {
+      ...validationResult,
+      fileUrl: null,
+      imageUrl: null,
+      fileName: null,
+      fileSize: null,
+    };
   }
+
+  const isImage = ["jpeg", "png", "webp"].includes(validationResult.format);
+  const folder = isImage ? "converse/images" : "converse/documents";
+  const publicIdPrefix = isImage ? "img" : "doc";
 
   try {
     const result = await uploadDocumentToImageKit(
       file,
       {
-        folder: "converse/documents",
-        publicId: `doc_${conversationId}_${Date.now()}`,
+        folder,
+        publicId: `${publicIdPrefix}_${conversationId}_${Date.now()}`,
         overwrite: false,
       },
       validationResult.format,
@@ -82,7 +92,8 @@ export async function uploadDocumentToMessage(
 
     return {
       success: true,
-      fileUrl: result.url,
+      imageUrl: isImage ? result.url : null,
+      fileUrl: isImage ? null : result.url,
       fileName: file.name,
       fileSize: file.size,
     };
@@ -91,6 +102,7 @@ export async function uploadDocumentToMessage(
       success: false,
       error: "Upload failed",
       fileUrl: null,
+      imageUrl: null,
       fileName: null,
       fileSize: null,
     };
