@@ -8,6 +8,7 @@ import {
   deleteMessageForEveryone,
   deleteMessageForSelf,
 } from "@/app/actions/messages/delete";
+import { FileDown } from "lucide-react";
 
 type MessageBubbleProps = {
   message: MessageItem;
@@ -23,6 +24,9 @@ const MessageBubble = ({
   const {
     id,
     text,
+    fileUrl,
+    fileName,
+    fileSize,
     isOwn,
     sender,
     createdAt,
@@ -45,6 +49,14 @@ const MessageBubble = ({
     .slice(0, 2)
     .join("")
     .toUpperCase();
+
+  const formatFileSize = (bytes: number): string => {
+    if (bytes === 0) return "0 B";
+    const k = 1024;
+    const sizes = ["B", "KB", "MB", "GB"];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + " " + sizes[i];
+  };
 
   const time = new Intl.DateTimeFormat("en", {
     hour: "numeric",
@@ -151,19 +163,44 @@ const MessageBubble = ({
               This message has been deleted
             </div>
           ) : (
-            text && (
-              <div
-                className={cn(
-                  "rounded-2xl px-4 py-2 text-sm",
-                  isOwn
-                    ? "rounded-br-sm bg-(--color-brand-400) text-white"
-                    : "rounded-bl-sm bg-(--color-background-secondary) text-(--color-text-primary)",
-                  isDeleting && "opacity-50",
-                )}
-              >
-                {text}
-              </div>
-            )
+            <>
+              {text && (
+                <div
+                  className={cn(
+                    "rounded-2xl px-4 py-2 text-sm",
+                    isOwn
+                      ? "rounded-br-sm bg-(--color-brand-400) text-white"
+                      : "rounded-bl-sm bg-(--color-background-secondary) text-(--color-text-primary)",
+                    isDeleting && "opacity-50",
+                  )}
+                >
+                  {text}
+                </div>
+              )}
+              {fileUrl && fileName && (
+                <a
+                  href={fileUrl}
+                  download={fileName}
+                  className={cn(
+                    "inline-flex items-center gap-2 rounded-2xl px-4 py-2 text-sm transition-colors",
+                    isOwn
+                      ? "rounded-br-sm bg-(--color-brand-500) text-white hover:bg-(--color-brand-600)"
+                      : "rounded-bl-sm bg-(--color-background-secondary) text-(--color-text-primary) hover:bg-(--color-background-tertiary)",
+                    isDeleting && "opacity-50 pointer-events-none",
+                  )}
+                >
+                  <FileDown className="size-4 shrink-0" />
+                  <div className="min-w-0">
+                    <div className="truncate font-medium">{fileName}</div>
+                    {fileSize && (
+                      <div className="text-xs opacity-75">
+                        {formatFileSize(fileSize)}
+                      </div>
+                    )}
+                  </div>
+                </a>
+              )}
+            </>
           )}
 
           <span className="mx-1 text-[10px] text-(--color-text-tertiary)">

@@ -7,9 +7,15 @@ import type { MessageItem } from "@/types";
 export async function sendMessage({
   conversationId,
   text,
+  fileUrl,
+  fileName,
+  fileSize,
 }: {
   conversationId: string;
-  text: string;
+  text?: string;
+  fileUrl?: string;
+  fileName?: string;
+  fileSize?: number;
 }) {
   const session = await getSession();
   if (!session?.user) return { success: false, error: "Unauthorized" };
@@ -49,14 +55,19 @@ export async function sendMessage({
     }
   }
 
-  const trimmedText = text.trim();
-  if (!trimmedText) return { success: false, error: "Message cannot be empty" };
+  const trimmedText = text?.trim() ?? "";
+  if (!trimmedText && !fileUrl) {
+    return { success: false, error: "Message must have text or a file" };
+  }
 
   const raw = await prisma.message.create({
     data: {
       conversationId,
       senderId: userId,
-      text: trimmedText,
+      text: trimmedText || null,
+      fileUrl: fileUrl || null,
+      fileName: fileName || null,
+      fileSize: fileSize || null,
     },
     include: {
       sender: {

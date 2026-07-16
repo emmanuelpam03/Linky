@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
-import { Send, Loader2 } from "lucide-react";
+import { useState, useRef } from "react";
+import { Send, Loader2, FileUp, X } from "lucide-react";
 import { sendMessage } from "@/app/actions/messages/send";
+import { uploadDocumentToMessage } from "@/app/actions/messages/upload";
 import type { MessageItem } from "@/types";
 
 type MessageComposerProps = {
@@ -17,28 +18,76 @@ const MessageComposer = ({
   const [text, setText] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isUploadingFile, setIsUploadingFile] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleSend = async () => {
     const trimmed = text.trim();
-    if (!trimmed || isSending) return;
+    if ((!trimmed && !selectedFile) || isSending || isUploadingFile) return;
 
     setIsSending(true);
-    setText("");
     setError(null);
+    const originalText = text;
+    const originalFile = selectedFile;
 
     try {
-      const result = await sendMessage({ conversationId, text: trimmed });
+      let fileUrl: string | undefined;
+      let fileName: string | undefined;
+      let fileSize: number | undefined;
+
+      if (selectedFile) {
+        setIsUploadingFile(true);
+        const formData = new FormData();
+        formData.append("document", selectedFile);
+        const uploadResult = await uploadDocumentToMessage(
+          conversationId,
+          formData,
+        );
+        setIsUploadingFile(false);
+
+        if (!uploadResult.success) {
+          setError(uploadResult.error ?? "File upload failed");
+          return;
+        }
+
+        fileUrl = uploadResult.fileUrl ?? undefined;
+        fileName = uploadResult.fileName ?? undefined;
+        fileSize = uploadResult.fileSize ?? undefined;
+      }
+
+      const result = await sendMessage({
+        conversationId,
+        text: trimmed || undefined,
+        fileUrl,
+        fileName,
+        fileSize,
+      });
+
       if (result.success && result.data) {
         onMessageSent(result.data as MessageItem);
+        setText("");
+        setSelectedFile(null);
       } else {
-        setText(trimmed); // restore on failure
+        setText(originalText);
+        setSelectedFile(originalFile);
         setError("Message could not be sent. Try again.");
       }
     } catch {
-      setText(trimmed);
+      setText(originalText);
+      setSelectedFile(originalFile);
       setError("Message could not be sent. Try again.");
     } finally {
       setIsSending(false);
+      setIsUploadingFile(false);
+    }
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setSelectedFile(file);
+      setError(null);
     }
   };
 
@@ -51,7 +100,37 @@ const MessageComposer = ({
 
   return (
     <div className="border-t border-(--color-border-tertiary) px-4 py-3">
+      {selectedFile && (
+        <div className="mb-2 flex items-center gap-2 rounded-lg bg-(--color-background-secondary) p-2">
+          <FileUp className="size-4 text-(--color-brand-400) shrink-0" />
+          <span className="flex-1 truncate text-xs text-(--color-text-primary)">
+            {selectedFile.name}
+          </span>
+          <button
+            onClick={() => setSelectedFile(null)}
+            disabled={isSending || isUploadingFile}
+            className="shrink-0 rounded p-0.5 text-(--color-text-tertiary) hover:bg-(--color-background-tertiary) transition-colors"
+          >
+            <X className="size-3" />
+          </button>
+        </div>
+      )}
       <div className="flex items-center gap-2 rounded-xl border border-(--color-border-secondary) bg-(--color-background-primary) px-4 py-2">
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,.csv,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/plain,text/csv"
+          onChange={handleFileSelect}
+          className="hidden"
+          disabled={isSending || isUploadingFile}
+        />
+        <button
+          onClick={() => fileInputRef.current?.click()}
+          disabled={isSending || isUploadingFile}
+          className="shrink-0 rounded-lg p-1.5 text-(--color-text-tertiary) hover:text-(--color-brand-400) hover:bg-(--color-brand-50) transition-colors disabled:text-(--color-text-tertiary)"
+        >
+          <FileUp className="size-4" />
+        </button>
         <input
           type="text"
           value={text}
@@ -60,16 +139,16 @@ const MessageComposer = ({
             if (error) setError(null);
           }}
           onKeyDown={handleKeyDown}
-          placeholder="Type a message..."
+          placeholder="Type a message or attach a file..."
           className="flex-1 bg-transparent text-sm text-(--color-text-primary) placeholder:text-(--color-text-tertiary) focus:outline-none"
-          disabled={isSending}
+          disabled={isSending || isUploadingFile}
         />
         <button
           onClick={handleSend}
-          disabled={!text.trim() || isSending}
+          disabled={(!text.trim() && !selectedFile) || isSending || isUploadingFile}
           className="shrink-0 rounded-lg p-1.5 text-(--color-brand-400) disabled:text-(--color-text-tertiary) transition-colors hover:bg-(--color-brand-50)"
         >
-          {isSending ? (
+          {isSending || isUploadingFile ? (
             <Loader2 className="size-4 animate-spin" />
           ) : (
             <Send className="size-4" />
