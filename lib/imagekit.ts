@@ -7,22 +7,14 @@ export function getImageKitClient() {
     return imageKitClient;
   }
 
-  const {
-    IMAGEKIT_PUBLIC_KEY,
-    IMAGEKIT_PRIVATE_KEY,
-    IMAGEKIT_URL_ENDPOINT,
-  } = process.env;
+  const { IMAGEKIT_PRIVATE_KEY } = process.env;
 
-  if (!IMAGEKIT_PUBLIC_KEY || !IMAGEKIT_PRIVATE_KEY || !IMAGEKIT_URL_ENDPOINT) {
-    throw new Error(
-      "ImageKit environment variables IMAGEKIT_PUBLIC_KEY, IMAGEKIT_PRIVATE_KEY, and IMAGEKIT_URL_ENDPOINT are required.",
-    );
+  if (!IMAGEKIT_PRIVATE_KEY) {
+    throw new Error("ImageKit environment variable IMAGEKIT_PRIVATE_KEY is required.");
   }
 
   imageKitClient = new ImageKit({
     privateKey: IMAGEKIT_PRIVATE_KEY,
-    publicKey: IMAGEKIT_PUBLIC_KEY,
-    urlEndpoint: IMAGEKIT_URL_ENDPOINT,
   });
 
   return imageKitClient;

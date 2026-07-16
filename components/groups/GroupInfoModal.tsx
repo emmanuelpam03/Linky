@@ -348,6 +348,8 @@ export default function GroupInfoModal({
 
   // ── Clear chat ────────────────────────────────────────────────────────────
   const handleClearChat = () => {
+    if (!onClearChat) return;
+
     setConfirmDialog({
       title: "Clear all messages?",
       description: "This only affects your view.",
@@ -355,7 +357,7 @@ export default function GroupInfoModal({
       confirmVariant: "destructive",
       onConfirm: async () => {
         setIsClearing(true);
-        const success = await onClearChat?.();
+        const success = await onClearChat();
         setIsClearing(false);
         if (success) onClose();
       },
@@ -875,18 +877,20 @@ export default function GroupInfoModal({
                   </div>
 
                   {/* Clear chat */}
-                  <button
-                    onClick={handleClearChat}
-                    disabled={isClearing}
-                    className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-(--color-text-secondary) hover:bg-(--color-background-secondary) transition-colors disabled:opacity-50"
-                  >
-                    {isClearing ? (
-                      <Loader2 className="size-4 animate-spin" />
-                    ) : (
-                      <Eraser className="size-4" />
-                    )}
-                    Clear chat
-                  </button>
+                  {onClearChat ? (
+                    <button
+                      onClick={handleClearChat}
+                      disabled={isClearing}
+                      className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-(--color-text-secondary) hover:bg-(--color-background-secondary) transition-colors disabled:opacity-50"
+                    >
+                      {isClearing ? (
+                        <Loader2 className="size-4 animate-spin" />
+                      ) : (
+                        <Eraser className="size-4" />
+                      )}
+                      Clear chat
+                    </button>
+                  ) : null}
                 </div>
 
                 {/* Created by / date */}

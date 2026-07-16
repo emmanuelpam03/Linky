@@ -59,17 +59,21 @@ export async function uploadGroupAvatar(
     };
 
   const file = formData.get("avatar") as File;
-  const validationError = validateImageFile(file);
-  if (validationError) {
-    return { ...validationError, imageUrl: null };
+  const validationResult = await validateImageFile(file);
+  if (!validationResult.success) {
+    return { ...validationResult, imageUrl: null };
   }
 
   try {
-    const result = await uploadImageToImageKit(file, {
-      folder: "converse/groups",
-      publicId: `group_${conversationId}`,
-      overwrite: true,
-    });
+    const result = await uploadImageToImageKit(
+      file,
+      {
+        folder: "converse/groups",
+        publicId: `group_${conversationId}`,
+        overwrite: true,
+      },
+      validationResult.format,
+    );
 
     await prisma.conversation.update({
       where: { id: conversationId },

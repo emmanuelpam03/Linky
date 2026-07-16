@@ -18,17 +18,21 @@ export async function uploadAvatar(formData: FormData) {
   }
 
   const file = formData.get("avatar") as File;
-  const validationError = validateImageFile(file);
-  if (validationError) {
-    return validationError;
+  const validationResult = await validateImageFile(file);
+  if (!validationResult.success) {
+    return validationResult;
   }
 
   try {
-    const result = await uploadImageToImageKit(file, {
-      folder: "converse/avatars",
-      publicId: `user_${session.user.id}`,
-      overwrite: true,
-    });
+    const result = await uploadImageToImageKit(
+      file,
+      {
+        folder: "converse/avatars",
+        publicId: `user_${session.user.id}`,
+        overwrite: true,
+      },
+      validationResult.format,
+    );
 
     await prisma.user.update({
       where: { id: session.user.id },
