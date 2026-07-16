@@ -1396,6 +1396,7 @@ export const MessageScalarFieldEnum = {
   senderId: 'senderId',
   text: 'text',
   editedAt: 'editedAt',
+  replyToId: 'replyToId',
   imageUrl: 'imageUrl',
   fileUrl: 'fileUrl',
   fileName: 'fileName',

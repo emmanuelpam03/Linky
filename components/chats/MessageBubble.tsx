@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import type { MessageItem } from "@/types";
@@ -11,17 +11,22 @@ import {
 import { addReaction, removeReaction } from "@/app/actions/messages/reactions";
 import { FileDown } from "lucide-react";
 import FilePreviewModal from "./FilePreviewModal";
+import { buildReactionSummary } from "@/lib/message-interactions";
 
 type MessageBubbleProps = {
   message: MessageItem;
   showAvatar: boolean;
+  conversationType?: "DIRECT" | "GROUP";
   onMessageUpdated: (messageId: string, updates: Partial<MessageItem>) => void;
+  onReply?: (message: MessageItem) => void;
 };
 
 const MessageBubble = ({
   message,
   showAvatar,
+  conversationType = "DIRECT",
   onMessageUpdated,
+  onReply,
 }: MessageBubbleProps) => {
   const {
     id,
@@ -74,6 +79,41 @@ const MessageBubble = ({
 
   const edited = (message as any).editedAt;
 
+  const [showReactionPicker, setShowReactionPicker] = useState(false);
+  const [reactionQuery, setReactionQuery] = useState("");
+  const [recentReactions, setRecentReactions] = useState<string[]>(["❤️", "👍", "😂", "😮"]);
+  const REACTION_OPTIONS = ["❤️", "😂", "😮", "😢", "👍", "👎", "🔥", "🎉", "🙏", "💯", "🤝", "😄"];
+  const reactionSummary = buildReactionSummary(message.reactions, sender.id);
+  const showReactionCounts = conversationType === "GROUP";
+  const canReact = !isOwn;
+  const reactionPickerRef = useRef<HTMLDivElement>(null);
+
+  const handleToggleReaction = async (reaction: string) => {
+    const existing = (message.reactions ?? []).find((r) => r.reaction === reaction);
+    if (existing && existing.reactedByUser) {
+      await removeReaction(id, reaction);
+      onMessageUpdated(id, {
+        reactions: (message.reactions ?? []).map((r) =>
+          r.reaction === reaction ? { ...r, count: Math.max(0, r.count - 1), reactedByUser: false } : r,
+        ),
+      });
+    } else {
+      await addReaction(id, reaction);
+      const updated = (message.reactions ?? []).slice();
+      const found = updated.find((r) => r.reaction === reaction);
+      if (found) {
+        found.count += 1;
+        found.reactedByUser = true;
+      } else {
+        updated.push({ reaction, count: 1, reactedByUser: true });
+      }
+      onMessageUpdated(id, { reactions: updated });
+    }
+    setRecentReactions((prev) => [reaction, ...prev.filter((item) => item !== reaction)].slice(0, 4));
+    setReactionQuery("");
+    setShowReactionPicker(false);
+  };
+
   const handleToggleHeart = async () => {
     const heart = "❤️";
     const existing = (message.reactions ?? []).find((r) => r.reaction === heart);
@@ -97,6 +137,19 @@ const MessageBubble = ({
       onMessageUpdated(id, { reactions: updated });
     }
   };
+
+  useEffect(() => {
+    if (!showReactionPicker) return;
+
+    const handlePointerDown = (event: MouseEvent) => {
+      if (!reactionPickerRef.current?.contains(event.target as Node)) {
+        setShowReactionPicker(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handlePointerDown);
+    return () => document.removeEventListener("mousedown", handlePointerDown);
+  }, [showReactionPicker]);
 
   const handleContextMenu = (e: React.MouseEvent) => {
     // Don't show context menu if already deleted for self with no everyone deletion
@@ -192,82 +245,132 @@ const MessageBubble = ({
           )}
 
           {/* Bubble */}
-          {isDeletedForEveryone ? (
-            <div className="rounded-2xl border border-(--color-border-tertiary) px-4 py-2 text-sm italic text-(--color-text-tertiary)">
-              This message has been deleted
-            </div>
-          ) : (
-            <>
-              {text && (
-                <div
-                  className={cn(
-                    "rounded-2xl px-4 py-2 text-sm",
-                    isOwn
-                      ? "rounded-br-sm bg-(--color-brand-400) text-white"
-                      : "rounded-bl-sm bg-(--color-background-secondary) text-(--color-text-primary)",
-                    isDeleting && "opacity-50",
-                  )}
-                >
-                  {text}
-                  {edited && (
-                    <span className="ml-2 text-xs opacity-70">· edited</span>
-                  )}
-                </div>
-              )}
-              {(imageUrl ?? fileUrl) && fileName && (
-                <button
-                  onClick={() =>
-                    setPreviewFile({
-                      fileUrl: imageUrl ?? fileUrl ?? "",
-                      fileName,
-                      fileSize: fileSize ?? undefined,
-                    })
-                  }
-                  className={cn(
-                    "inline-flex items-center gap-2 rounded-2xl px-4 py-2 text-sm transition-colors text-left",
-                    isOwn
-                      ? "rounded-br-sm bg-(--color-brand-500) text-white hover:bg-(--color-brand-600)"
-                      : "rounded-bl-sm bg-(--color-background-secondary) text-(--color-text-primary) hover:bg-(--color-background-tertiary)",
-                    isDeleting && "opacity-50 pointer-events-none",
-                  )}
-                >
-                  <FileDown className="size-4 shrink-0" />
-                  <div className="min-w-0">
-                    <div className="truncate font-medium">{fileName}</div>
-                    {fileSize && (
-                      <div className="text-xs opacity-75">
-                        {formatFileSize(fileSize)}
+          <div className={cn("flex items-end gap-1.5", isOwn ? "flex-row-reverse" : "flex-row")}>
+            {isDeletedForEveryone ? (
+              <div className="rounded-2xl border border-(--color-border-tertiary) px-4 py-2 text-sm italic text-(--color-text-tertiary)">
+                This message has been deleted
+              </div>
+            ) : (
+              <>
+                {message.replyTo && (
+                  <div className="mb-1 rounded-lg border-l-2 border-(--color-border-secondary) bg-(--color-background-secondary) px-3 py-1 text-xs">
+                    <div className="text-xs font-medium text-(--color-text-secondary)">{message.replyTo.sender.name}</div>
+                    <div className="truncate">{message.replyTo.text ?? ""}</div>
+                  </div>
+                )}
+                {text && (
+                  <div
+                    className={cn(
+                      "rounded-2xl px-4 py-2 text-sm",
+                      isOwn
+                        ? "rounded-br-sm bg-(--color-brand-400) text-white"
+                        : "rounded-bl-sm bg-(--color-background-secondary) text-(--color-text-primary)",
+                      isDeleting && "opacity-50",
+                    )}
+                  >
+                    {text}
+                    {edited && (
+                      <span className="ml-2 text-xs opacity-70">· edited</span>
+                    )}
+                  </div>
+                )}
+                {(imageUrl ?? fileUrl) && fileName && (
+                  <button
+                    onClick={() =>
+                      setPreviewFile({
+                        fileUrl: imageUrl ?? fileUrl ?? "",
+                        fileName,
+                        fileSize: fileSize ?? undefined,
+                      })
+                    }
+                    className={cn(
+                      "inline-flex items-center gap-2 rounded-2xl px-4 py-2 text-sm transition-colors text-left",
+                      isOwn
+                        ? "rounded-br-sm bg-(--color-brand-500) text-white hover:bg-(--color-brand-600)"
+                        : "rounded-bl-sm bg-(--color-background-secondary) text-(--color-text-primary) hover:bg-(--color-background-tertiary)",
+                      isDeleting && "opacity-50 pointer-events-none",
+                    )}
+                  >
+                    <FileDown className="size-4 shrink-0" />
+                    <div className="min-w-0">
+                      <div className="truncate font-medium">{fileName}</div>
+                      {fileSize && (
+                        <div className="text-xs opacity-75">
+                          {formatFileSize(fileSize)}
+                        </div>
+                      )}
+                    </div>
+                  </button>
+                )}
+              </>
+            )}
+
+            <div className="flex items-center gap-1.5">
+              <span className="mx-1 text-[10px] text-(--color-text-tertiary)">
+                {time}
+              </span>
+
+              {canReact && (
+                <>
+                  {reactionSummary.map((r) => (
+                    <button
+                      key={r.reaction}
+                      onClick={() => handleToggleReaction(r.reaction)}
+                      className={cn(
+                        "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-sm",
+                        r.reactedByUser ? "bg-(--color-brand-50) font-semibold" : "bg-(--color-background-tertiary) opacity-90",
+                      )}
+                    >
+                      <span>{r.reaction}</span>
+                      {showReactionCounts && <span className="text-xs opacity-80">{r.count}</span>}
+                    </button>
+                  ))}
+
+                  <div className="relative" ref={reactionPickerRef}>
+                    <button
+                      onClick={() => setShowReactionPicker((s) => !s)}
+                      className="rounded-full px-2 py-0.5 text-sm opacity-90"
+                    >
+                      +
+                    </button>
+                    {showReactionPicker && (
+                      <div className="absolute bottom-full mb-2 w-56 rounded-lg border border-(--color-border-tertiary) bg-(--color-background-primary) p-2 shadow-lg">
+                        <input
+                          value={reactionQuery}
+                          onChange={(event) => setReactionQuery(event.target.value)}
+                          placeholder="Search emoji"
+                          className="mb-2 w-full rounded-md border border-(--color-border-tertiary) bg-(--color-background-secondary) px-2 py-1 text-xs outline-none"
+                        />
+                        <div className="mb-2 flex flex-wrap gap-1">
+                          {recentReactions.map((opt) => (
+                            <button
+                              key={opt}
+                              onClick={() => handleToggleReaction(opt)}
+                              className="rounded-md bg-(--color-background-secondary) px-2 py-1 text-base"
+                            >
+                              {opt}
+                            </button>
+                          ))}
+                        </div>
+                        <div className="grid grid-cols-6 gap-1">
+                          {REACTION_OPTIONS.filter((opt) =>
+                            opt.toLowerCase().includes(reactionQuery.toLowerCase()),
+                          ).map((opt) => (
+                            <button
+                              key={opt}
+                              onClick={() => handleToggleReaction(opt)}
+                              className="rounded-md bg-(--color-background-secondary) p-1 text-lg"
+                            >
+                              {opt}
+                            </button>
+                          ))}
+                        </div>
                       </div>
                     )}
                   </div>
-                </button>
+                </>
               )}
-            </>
-          )}
-
-          <span className="mx-1 text-[10px] text-(--color-text-tertiary)">
-            {time}
-          </span>
-
-          {/* Reactions */}
-          <div className="flex gap-2 items-center mt-1">
-            {(message.reactions ?? []).map((r) => (
-              <button
-                key={r.reaction}
-                onClick={handleToggleHeart}
-                className={cn(
-                  "text-sm",
-                  r.reactedByUser ? "font-semibold" : "opacity-80",
-                )}
-              >
-                {r.reaction} {r.count}
-              </button>
-            ))}
-
-            {/* quick heart action */}
-            <button onClick={handleToggleHeart} className="text-sm opacity-80">
-              ❤️
-            </button>
+            </div>
           </div>
         </div>
 
@@ -277,6 +380,19 @@ const MessageBubble = ({
             className="fixed z-50 min-w-40 overflow-hidden rounded-xl border border-(--color-border-tertiary) bg-(--color-background-primary) shadow-lg"
             style={{ top: contextMenu.y, left: contextMenu.x }}
           >
+            {/* Reply */}
+            {!deletedForSelf && !isDeletedForEveryone && (
+              <button
+                onClick={() => {
+                  setContextMenu(null);
+                  if (typeof onReply === "function") onReply(message);
+                }}
+                className="flex w-full items-center px-4 py-2.5 text-sm text-(--color-text-primary) hover:bg-(--color-background-secondary) transition-colors"
+              >
+                Reply
+              </button>
+            )}
+
             {/* Delete for self — only show once, including deleted-for-everyone messages */}
             {!deletedForSelf && !isDeletedForEveryone && (
               <button

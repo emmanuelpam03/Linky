@@ -40,7 +40,19 @@ export async function getMessages(
 
   const raw = await prisma.message.findMany({
     where: { conversationId },
-    include: {
+    select: {
+      id: true,
+      text: true,
+      editedAt: true,
+      imageUrl: true,
+      fileUrl: true,
+      fileName: true,
+      fileSize: true,
+      createdAt: true,
+      senderId: true,
+      deletedFor: true,
+      deletedForEveryone: true,
+      replyToId: true,
       sender: {
         select: {
           id: true,
@@ -60,9 +72,48 @@ export async function getMessages(
       : {}),
   });
 
+  const messageIds = raw.map((r) => r.id);
+  let replyByMessage: Record<string, { id: string; text: string | null; sender: { id: string; name: string; username: string; image: string | null } } | null> = {};
+  if (messageIds.length > 0) {
+    const replyMessages = await prisma.message.findMany({
+      where: { id: { in: messageIds.filter((id) => id) } },
+      select: {
+        id: true,
+        text: true,
+        replyToId: true,
+        sender: {
+          select: {
+            id: true,
+            name: true,
+            username: true,
+            image: true,
+          },
+        },
+      },
+    });
+
+    const replyLookup = new Map<string, { id: string; text: string | null; sender: { id: string; name: string; username: string; image: string | null } }>();
+    for (const reply of replyMessages) {
+      replyLookup.set(reply.id, {
+        id: reply.id,
+        text: reply.text,
+        sender: reply.sender,
+      });
+    }
+
+    for (const message of raw) {
+      if (!message.replyToId) {
+        replyByMessage[message.id] = null;
+        continue;
+      }
+
+      const replyMessage = replyLookup.get(message.replyToId);
+      replyByMessage[message.id] = replyMessage ?? null;
+    }
+  }
+
   // If the generated client doesn't expose the `reactions` relation on Message,
   // fetch reactions separately to avoid runtime errors.
-  const messageIds = raw.map((r) => r.id);
   let reactionsByMessage: Record<string, { reaction: string; userId: string }[]> = {};
   if (messageIds.length > 0) {
     const reactions = await prisma.messageReaction.findMany({
@@ -101,6 +152,13 @@ export async function getMessages(
       isOwn: m.senderId === userId,
       deletedForEveryone: m.deletedForEveryone,
       deletedForSelf: m.deletedFor?.includes(userId) ?? false,
+      replyTo: replyByMessage[m.id]
+        ? {
+            id: replyByMessage[m.id]!.id,
+            text: replyByMessage[m.id]!.text,
+            sender: replyByMessage[m.id]!.sender,
+          }
+        : null,
       reactions: (reactionsByMessage[m.id] ?? []).reduce((acc: any, r: any) => {
         const key = r.reaction;
         const found = acc.find((x: any) => x.reaction === key);

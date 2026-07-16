@@ -35,6 +35,7 @@ export default function ChatWindow({ conversation }: ChatWindowProps) {
   const [groupDetail, setGroupDetail] = useState<GroupDetail | null>(null);
   const [isLoadingGroup, setIsLoadingGroup] = useState(false);
   const [showModal, setShowModal] = useState(false);
+  const [replyTo, setReplyTo] = useState<MessageItem | null>(null);
 
   const bottomRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -127,8 +128,19 @@ export default function ChatWindow({ conversation }: ChatWindowProps) {
     }
   }, [nextCursor, isLoadingMore, handleLoadMore]);
 
+  const scrollToMessage = useCallback((messageId: string) => {
+    const target = document.querySelector<HTMLElement>(`[data-message-id="${messageId}"]`);
+    if (!target) return;
+
+    target.scrollIntoView({ behavior: "smooth", block: "center" });
+    target.classList.add("ring-2", "ring-(--color-brand-300)");
+    window.setTimeout(() => target.classList.remove("ring-2", "ring-(--color-brand-300)"), 1800);
+  }, []);
+
   const handleMessageSent = (message: MessageItem) => {
     setMessages((prev) => [...prev, message]);
+    setReplyTo(null);
+    requestAnimationFrame(() => bottomRef.current?.scrollIntoView({ behavior: "smooth" }));
   };
 
   const handleMessageUpdated = (
@@ -353,12 +365,20 @@ export default function ChatWindow({ conversation }: ChatWindowProps) {
                       const showAvatar =
                         !prev || prev.senderId !== message.senderId;
                       return (
-                        <MessageBubble
-                          key={message.id}
-                          message={message}
-                          showAvatar={showAvatar}
-                          onMessageUpdated={handleMessageUpdated}
-                        />
+                        <div key={message.id} data-message-id={message.id}>
+                          <MessageBubble
+                            message={message}
+                            showAvatar={showAvatar}
+                            conversationType={conversation.type}
+                            onMessageUpdated={handleMessageUpdated}
+                            onReply={(m) => {
+                              setReplyTo(m);
+                              if (m.id) {
+                                requestAnimationFrame(() => scrollToMessage(m.id));
+                              }
+                            }}
+                          />
+                        </div>
                       );
                     })}
                     <div ref={bottomRef} />
@@ -371,6 +391,8 @@ export default function ChatWindow({ conversation }: ChatWindowProps) {
           <MessageComposer
             conversationId={conversation.id}
             onMessageSent={handleMessageSent}
+            replyTo={replyTo}
+            onCancelReply={() => setReplyTo(null)}
           />
         </div>
       </div>

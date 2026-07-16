@@ -194,6 +194,7 @@ model Message {
   senderId           String
   text               String?
   editedAt           DateTime?
+  replyToId          String?
   imageUrl           String?
   fileUrl            String?
   fileName           String?
@@ -203,11 +204,13 @@ model Message {
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
 
-  // reactions relation
+  // self-relation: replies and reaction relation
+  replies Message[] @relation("MessageReplies")
   reactions MessageReaction[]
 
   conversation Conversation @relation("ConversationMessages", fields: [conversationId], references: [id], onDelete: Cascade)
   sender       User         @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
+  replyTo      Message?     @relation("MessageReplies", fields: [replyToId], references: [id], onDelete: Cascade)
 
   @@index([conversationId])
   @@index([senderId])

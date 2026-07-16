@@ -68,6 +68,7 @@ export async function sendMessage({
   imageUrl,
   fileName,
   fileSize,
+  replyToId,
 }: {
   conversationId: string;
   text?: string;
@@ -75,6 +76,7 @@ export async function sendMessage({
   imageUrl?: string;
   fileName?: string;
   fileSize?: number;
+  replyToId?: string;
 }) {
   const session = await getSession();
   if (!session?.user) return { success: false, error: "Unauthorized" };
@@ -140,12 +142,24 @@ export async function sendMessage({
       conversationId,
       senderId: userId,
       text: trimmedText || null,
+      replyToId: replyToId ?? null,
       imageUrl: attachment?.imageUrl || null,
       fileUrl: attachment?.fileUrl || null,
       fileName: attachment?.fileName || null,
       fileSize: attachment?.fileSize ?? null,
     },
-    include: {
+    select: {
+      id: true,
+      text: true,
+      imageUrl: true,
+      fileUrl: true,
+      fileName: true,
+      fileSize: true,
+      createdAt: true,
+      senderId: true,
+      deletedForEveryone: true,
+      deletedFor: true,
+      replyToId: true,
       sender: {
         select: {
           id: true,
@@ -167,6 +181,7 @@ export async function sendMessage({
     data: {
       id: raw.id,
       text: raw.text,
+      replyTo: null,
       imageUrl: raw.imageUrl,
       fileUrl: raw.fileUrl,
       fileName: raw.fileName,

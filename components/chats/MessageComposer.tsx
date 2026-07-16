@@ -12,11 +12,15 @@ import type { MessageItem } from "@/types";
 type MessageComposerProps = {
   conversationId: string;
   onMessageSent: (message: MessageItem) => void;
+  replyTo?: MessageItem | null;
+  onCancelReply?: () => void;
 };
 
 const MessageComposer = ({
   conversationId,
   onMessageSent,
+  replyTo = null,
+  onCancelReply,
 }: MessageComposerProps) => {
   const [text, setText] = useState("");
   const [isSending, setIsSending] = useState(false);
@@ -72,6 +76,7 @@ const MessageComposer = ({
         imageUrl,
         fileName,
         fileSize,
+        replyToId: replyTo?.id,
       });
 
       if (result.success && result.data) {
@@ -143,6 +148,15 @@ const MessageComposer = ({
           >
             <X className="size-3" />
           </button>
+        </div>
+      )}
+      {replyTo && (
+        <div className="mb-2 rounded-lg border border-(--color-border-secondary) bg-(--color-background-secondary) p-2">
+          <div className="flex items-center justify-between">
+            <div className="text-xs text-(--color-text-secondary)">Replying to {replyTo.sender.name}</div>
+            <button onClick={onCancelReply} className="text-xs text-(--color-text-tertiary)">Cancel</button>
+          </div>
+          <div className="mt-1 truncate text-sm">{replyTo.text}</div>
         </div>
       )}
       <div className="flex items-center gap-2 rounded-xl border border-(--color-border-secondary) bg-(--color-background-primary) px-4 py-2">

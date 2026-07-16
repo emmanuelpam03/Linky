@@ -247,6 +247,7 @@ export type MessageItem = {
   deletedForSelf: boolean;
   editedAt?: Date | null;
   reactions?: { reaction: string; count: number; reactedByUser?: boolean }[];
+  replyTo?: { id: string; text: string | null; sender: { id: string; name: string; username: string; image: string | null } } | null;
 };
 
 // ── Prisma intermediate types ─────────────────────────────────────────────────
