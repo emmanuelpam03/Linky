@@ -96,3 +96,27 @@ export async function uploadDocumentToMessage(
     };
   }
 }
+
+export async function deleteUploadedDocument(fileUrl: string) {
+  if (!fileUrl) return { success: false, error: "No file URL provided" };
+
+  const session = await getSession();
+  if (!session?.user) {
+    return { success: false, error: "Unauthorized" };
+  }
+
+  try {
+    const client = (await import("@/lib/imagekit")).getImageKitClient();
+    const parsedUrl = new URL(fileUrl);
+    const fileId = parsedUrl.pathname.split("/").filter(Boolean).pop();
+
+    if (!fileId) {
+      return { success: false, error: "Invalid file URL" };
+    }
+
+    await client.delete(`/v1/files/${fileId}`);
+    return { success: true };
+  } catch {
+    return { success: false, error: "Cleanup failed" };
+  }
+}

@@ -4,6 +4,58 @@ import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth-session";
 import type { MessageItem } from "@/types";
 
+const MAX_ATTACHMENT_FILE_SIZE_BYTES = 50 * 1024 * 1024;
+
+function validateAttachmentMetadata({
+  fileUrl,
+  fileName,
+  fileSize,
+}: {
+  fileUrl?: string;
+  fileName?: string;
+  fileSize?: number;
+}) {
+  if (!fileUrl) return null;
+
+  if (!fileName?.trim() || fileName.includes("/") || fileName.includes("\\")) {
+    return null;
+  }
+
+  if (!Number.isInteger(fileSize) || fileSize! <= 0 || fileSize! > MAX_ATTACHMENT_FILE_SIZE_BYTES) {
+    return null;
+  }
+
+  const imageKitEndpoint = process.env.IMAGEKIT_URL_ENDPOINT?.trim();
+  if (!imageKitEndpoint) {
+    return null;
+  }
+
+  try {
+    const parsedFileUrl = new URL(fileUrl);
+    const parsedEndpoint = new URL(imageKitEndpoint);
+
+    if (parsedFileUrl.protocol !== "https:" || parsedEndpoint.protocol !== "https:") {
+      return null;
+    }
+
+    if (parsedFileUrl.hostname !== parsedEndpoint.hostname) {
+      return null;
+    }
+
+    if (!parsedFileUrl.pathname || parsedFileUrl.pathname === "/") {
+      return null;
+    }
+  } catch {
+    return null;
+  }
+
+  return {
+    fileUrl,
+    fileName: fileName.trim(),
+    fileSize,
+  };
+}
+
 export async function sendMessage({
   conversationId,
   text,
@@ -56,8 +108,14 @@ export async function sendMessage({
   }
 
   const trimmedText = text?.trim() ?? "";
-  if (!trimmedText && !fileUrl) {
+  const attachment = validateAttachmentMetadata({ fileUrl, fileName, fileSize });
+
+  if (!trimmedText && !attachment) {
     return { success: false, error: "Message must have text or a file" };
+  }
+
+  if (fileUrl && !attachment) {
+    return { success: false, error: "Invalid attachment metadata" };
   }
 
   const raw = await prisma.message.create({
@@ -65,9 +123,9 @@ export async function sendMessage({
       conversationId,
       senderId: userId,
       text: trimmedText || null,
-      fileUrl: fileUrl || null,
-      fileName: fileName || null,
-      fileSize: fileSize || null,
+      fileUrl: attachment?.fileUrl || null,
+      fileName: attachment?.fileName || null,
+      fileSize: attachment?.fileSize ?? null,
     },
     include: {
       sender: {

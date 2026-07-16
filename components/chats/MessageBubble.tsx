@@ -9,6 +9,7 @@ import {
   deleteMessageForSelf,
 } from "@/app/actions/messages/delete";
 import { FileDown } from "lucide-react";
+import FilePreviewModal from "./FilePreviewModal";
 
 type MessageBubbleProps = {
   message: MessageItem;
@@ -38,6 +39,11 @@ const MessageBubble = ({
     y: number;
   } | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [previewFile, setPreviewFile] = useState<{
+    fileUrl: string;
+    fileName: string;
+    fileSize?: number;
+  } | null>(null);
   const menuWidth = 192;
   const menuItemHeight = 42;
   const menuMargin = 12;
@@ -178,11 +184,16 @@ const MessageBubble = ({
                 </div>
               )}
               {fileUrl && fileName && (
-                <a
-                  href={fileUrl}
-                  download={fileName}
+                <button
+                  onClick={() =>
+                    setPreviewFile({
+                      fileUrl,
+                      fileName,
+                      fileSize: fileSize ?? undefined,
+                    })
+                  }
                   className={cn(
-                    "inline-flex items-center gap-2 rounded-2xl px-4 py-2 text-sm transition-colors",
+                    "inline-flex items-center gap-2 rounded-2xl px-4 py-2 text-sm transition-colors text-left",
                     isOwn
                       ? "rounded-br-sm bg-(--color-brand-500) text-white hover:bg-(--color-brand-600)"
                       : "rounded-bl-sm bg-(--color-background-secondary) text-(--color-text-primary) hover:bg-(--color-background-tertiary)",
@@ -198,7 +209,7 @@ const MessageBubble = ({
                       </div>
                     )}
                   </div>
-                </a>
+                </button>
               )}
             </>
           )}
@@ -246,6 +257,15 @@ const MessageBubble = ({
           </div>
         )}
       </div>
+
+      {/* File Preview Modal */}
+      <FilePreviewModal
+        isOpen={!!previewFile}
+        fileUrl={previewFile?.fileUrl || ""}
+        fileName={previewFile?.fileName || ""}
+        fileSize={previewFile?.fileSize}
+        onClose={() => setPreviewFile(null)}
+      />
     </>
   );
 };

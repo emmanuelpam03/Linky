@@ -11,6 +11,10 @@ export const ALLOWED_DOCUMENT_TYPES = [
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   "text/plain",
   "text/csv",
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/jpg",
 ] as const;
 
 export type DocumentFormat =
@@ -20,7 +24,10 @@ export type DocumentFormat =
   | "xls"
   | "xlsx"
   | "txt"
-  | "csv";
+  | "csv"
+  | "jpeg"
+  | "png"
+  | "webp";
 
 export type DocumentValidationError = {
   success: false;
@@ -40,60 +47,62 @@ async function detectDocumentFormat(
   fileName: string,
   mimeType: string,
 ): Promise<DocumentFormat | null> {
-  // Check by MIME type and file extension as primary method
   const ext = fileName.split(".").pop()?.toLowerCase();
+  const isPdfSignature =
+    bytes.length >= 4 &&
+    bytes[0] === 0x25 &&
+    bytes[1] === 0x50 &&
+    bytes[2] === 0x44 &&
+    bytes[3] === 0x46;
+  const isOle2Signature =
+    bytes.length >= 8 &&
+    bytes[0] === 0xd0 &&
+    bytes[1] === 0xcf &&
+    bytes[2] === 0x11 &&
+    bytes[3] === 0xe0;
+  const isZipSignature =
+    bytes.length >= 4 &&
+    bytes[0] === 0x50 &&
+    bytes[1] === 0x4b &&
+    bytes[2] === 0x03 &&
+    bytes[3] === 0x04;
 
   if (mimeType.includes("pdf") || ext === "pdf") {
-    // PDF signature check
-    if (
-      bytes.length >= 4 &&
-      bytes[0] === 0x25 &&
-      bytes[1] === 0x50 &&
-      bytes[2] === 0x44 &&
-      bytes[3] === 0x46
-    ) {
-      return "pdf";
-    }
+    return isPdfSignature ? "pdf" : null;
+  }
+
+  if (mimeType.includes("jpeg") || mimeType.includes("jpg") || ext === "jpg" || ext === "jpeg") {
+    return bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 ? "jpeg" : null;
+  }
+
+  if (mimeType.includes("png") || ext === "png") {
+    return bytes.length >= 8 && bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47 ? "png" : null;
+  }
+
+  if (mimeType.includes("webp") || ext === "webp") {
+    return bytes.length >= 12 && bytes[0] === 0x52 && bytes[1] === 0x49 && bytes[2] === 0x46 && bytes[3] === 0x46 && bytes[8] === 0x57 && bytes[9] === 0x45 && bytes[10] === 0x42 && bytes[11] === 0x50 ? "webp" : null;
   }
 
   if (
-    mimeType.includes("word") ||
-    mimeType.includes("document") ||
-    ext === "doc" ||
+    mimeType.includes("openxmlformats-officedocument.wordprocessingml.document") ||
     ext === "docx"
   ) {
-    // DOCX is a ZIP file with specific structure
-    if (ext === "docx") return "docx";
-    // DOC has OLE2 signature
-    if (
-      bytes.length >= 8 &&
-      bytes[0] === 0xd0 &&
-      bytes[1] === 0xcf &&
-      bytes[2] === 0x11 &&
-      bytes[3] === 0xe0
-    ) {
-      return "doc";
-    }
+    return isZipSignature ? "docx" : null;
+  }
+
+  if (mimeType.includes("word") || mimeType.includes("document") || ext === "doc") {
+    return isOle2Signature ? "doc" : null;
   }
 
   if (
-    mimeType.includes("sheet") ||
-    mimeType.includes("excel") ||
-    ext === "xls" ||
+    mimeType.includes("openxmlformats-officedocument.spreadsheetml.sheet") ||
     ext === "xlsx"
   ) {
-    // XLSX is a ZIP file
-    if (ext === "xlsx") return "xlsx";
-    // XLS has OLE2 signature like DOC
-    if (
-      bytes.length >= 8 &&
-      bytes[0] === 0xd0 &&
-      bytes[1] === 0xcf &&
-      bytes[2] === 0x11 &&
-      bytes[3] === 0xe0
-    ) {
-      return "xls";
-    }
+    return isZipSignature ? "xlsx" : null;
+  }
+
+  if (mimeType.includes("sheet") || mimeType.includes("excel") || ext === "xls") {
+    return isOle2Signature ? "xls" : null;
   }
 
   if (mimeType.includes("plain") || ext === "txt") {
@@ -103,15 +112,6 @@ async function detectDocumentFormat(
   if (mimeType.includes("csv") || ext === "csv") {
     return "csv";
   }
-
-  // Fallback to extension if MIME type didn't match
-  if (ext === "pdf") return "pdf";
-  if (ext === "doc") return "doc";
-  if (ext === "docx") return "docx";
-  if (ext === "xls") return "xls";
-  if (ext === "xlsx") return "xlsx";
-  if (ext === "txt") return "txt";
-  if (ext === "csv") return "csv";
 
   return null;
 }

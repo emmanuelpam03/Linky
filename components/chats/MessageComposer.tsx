@@ -3,7 +3,10 @@
 import { useState, useRef } from "react";
 import { Send, Loader2, FileUp, X } from "lucide-react";
 import { sendMessage } from "@/app/actions/messages/send";
-import { uploadDocumentToMessage } from "@/app/actions/messages/upload";
+import {
+  deleteUploadedDocument,
+  uploadDocumentToMessage,
+} from "@/app/actions/messages/upload";
 import type { MessageItem } from "@/types";
 
 type MessageComposerProps = {
@@ -21,21 +24,25 @@ const MessageComposer = ({
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isUploadingFile, setIsUploadingFile] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const isSubmittingRef = useRef(false);
 
   const handleSend = async () => {
     const trimmed = text.trim();
-    if ((!trimmed && !selectedFile) || isSending || isUploadingFile) return;
+    if ((!trimmed && !selectedFile) || isSending || isUploadingFile || isSubmittingRef.current) {
+      return;
+    }
 
+    isSubmittingRef.current = true;
     setIsSending(true);
     setError(null);
     const originalText = text;
     const originalFile = selectedFile;
 
-    try {
-      let fileUrl: string | undefined;
-      let fileName: string | undefined;
-      let fileSize: number | undefined;
+    let fileUrl: string | undefined;
+    let fileName: string | undefined;
+    let fileSize: number | undefined;
 
+    try {
       if (selectedFile) {
         setIsUploadingFile(true);
         const formData = new FormData();
@@ -69,15 +76,32 @@ const MessageComposer = ({
         setText("");
         setSelectedFile(null);
       } else {
+        if (fileUrl) {
+          try {
+            await deleteUploadedDocument(fileUrl);
+          } catch {
+            // Ignore cleanup failures so the original send error remains visible.
+          }
+        }
+
         setText(originalText);
         setSelectedFile(originalFile);
         setError("Message could not be sent. Try again.");
       }
     } catch {
+      if (fileUrl) {
+        try {
+          await deleteUploadedDocument(fileUrl);
+        } catch {
+          // Ignore cleanup failures so the original send error remains visible.
+        }
+      }
+
       setText(originalText);
       setSelectedFile(originalFile);
       setError("Message could not be sent. Try again.");
     } finally {
+      isSubmittingRef.current = false;
       setIsSending(false);
       setIsUploadingFile(false);
     }
@@ -108,6 +132,7 @@ const MessageComposer = ({
           </span>
           <button
             onClick={() => setSelectedFile(null)}
+            aria-label="Remove attached file"
             disabled={isSending || isUploadingFile}
             className="shrink-0 rounded p-0.5 text-(--color-text-tertiary) hover:bg-(--color-background-tertiary) transition-colors"
           >
@@ -119,13 +144,14 @@ const MessageComposer = ({
         <input
           ref={fileInputRef}
           type="file"
-          accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,.csv,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/plain,text/csv"
+          accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,.csv,.jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp,image/jpg,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/plain,text/csv"
           onChange={handleFileSelect}
           className="hidden"
           disabled={isSending || isUploadingFile}
         />
         <button
           onClick={() => fileInputRef.current?.click()}
+          aria-label="Attach a file"
           disabled={isSending || isUploadingFile}
           className="shrink-0 rounded-lg p-1.5 text-(--color-text-tertiary) hover:text-(--color-brand-400) hover:bg-(--color-brand-50) transition-colors disabled:text-(--color-text-tertiary)"
         >
