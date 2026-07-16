@@ -2,7 +2,10 @@
 
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth-session";
-import cloudinary from "@/lib/cloudinary";
+import {
+  uploadImageToImageKit,
+  validateImageFile,
+} from "@/lib/imagekit/upload";
 
 export async function updateGroup(
   conversationId: string,
@@ -56,49 +59,24 @@ export async function uploadGroupAvatar(
     };
 
   const file = formData.get("avatar") as File;
-  if (!file)
-    return { success: false, error: "No file provided", imageUrl: null };
-
-  const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
-  if (!allowedTypes.includes(file.type))
-    return {
-      success: false,
-      error: "Only JPG, PNG or WebP allowed",
-      imageUrl: null,
-    };
-
-  if (file.size > 2 * 1024 * 1024)
-    return { success: false, error: "File must be under 2MB", imageUrl: null };
+  const validationError = validateImageFile(file);
+  if (validationError) {
+    return { ...validationError, imageUrl: null };
+  }
 
   try {
-    const bytes = await file.arrayBuffer();
-    const buffer = Buffer.from(bytes);
-
-    const result = await new Promise<{ secure_url: string }>(
-      (resolve, reject) => {
-        cloudinary.uploader
-          .upload_stream(
-            {
-              resource_type: "image",
-              folder: "converse/groups",
-              public_id: `group_${conversationId}`,
-              overwrite: true,
-            },
-            (error, result) => {
-              if (error || !result) reject(error);
-              else resolve(result);
-            },
-          )
-          .end(buffer);
-      },
-    );
+    const result = await uploadImageToImageKit(file, {
+      folder: "converse/groups",
+      publicId: `group_${conversationId}`,
+      overwrite: true,
+    });
 
     await prisma.conversation.update({
       where: { id: conversationId },
-      data: { image: result.secure_url },
+      data: { image: result.url },
     });
 
-    return { success: true, imageUrl: result.secure_url };
+    return { success: true, imageUrl: result.url };
   } catch {
     return { success: false, error: "Upload failed", imageUrl: null };
   }

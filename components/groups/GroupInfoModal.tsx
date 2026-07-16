@@ -77,7 +77,7 @@ type GroupInfoModalProps = {
   group: GroupDetail;
   onClose: () => void;
   onGroupUpdated: (updates: Partial<GroupDetail>) => void;
-  onClearChat: () => Promise<boolean>;
+  onClearChat?: () => Promise<boolean>;
 };
 
 function formatBytes(bytes: number | null): string {
@@ -355,7 +355,7 @@ export default function GroupInfoModal({
       confirmVariant: "destructive",
       onConfirm: async () => {
         setIsClearing(true);
-        const success = await onClearChat();
+        const success = await onClearChat?.();
         setIsClearing(false);
         if (success) onClose();
       },
