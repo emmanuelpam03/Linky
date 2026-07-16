@@ -30,7 +30,7 @@ const FilePreviewModal = ({
 
   const lowerFileName = fileName.toLowerCase();
   const isPdf = lowerFileName.endsWith(".pdf");
-  const isImage = /\.(jpe?g|png|webp)$/i.test(lowerFileName);
+  const isImage = /\.(jpe?g|png|gif|webp|bmp|svg)$/i.test(lowerFileName);
   const fileExtension = fileName.split(".").pop()?.toUpperCase() || "FILE";
 
   return (

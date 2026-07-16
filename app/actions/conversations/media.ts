@@ -87,10 +87,10 @@ export async function getSharedFiles(conversationId: string) {
   });
 
   const files = messages.filter((message) => {
-    if (message.fileUrl && !isImageFileName(message.fileName)) {
-      return true;
-    }
-    return false;
+    return (
+      !isImageFileName(message.fileName) &&
+      Boolean(message.fileUrl || message.imageUrl)
+    );
   });
 
   return {
