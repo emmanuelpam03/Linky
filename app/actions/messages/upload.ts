@@ -75,7 +75,7 @@ export async function uploadDocumentToMessage(
     };
   }
 
-  const isImage = ["jpeg", "png", "webp"].includes(validationResult.format);
+  const isImage = ["jpeg", "jpg", "png", "webp"].includes(validationResult.format);
   const folder = isImage ? "converse/images" : "converse/documents";
   const publicIdPrefix = isImage ? "img" : "doc";
 

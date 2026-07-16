@@ -121,12 +121,12 @@ export async function sendMessage({
     fileSize,
   });
 
-  if (!trimmedText && !attachment) {
-    return { success: false, error: "Message must have text or a file" };
-  }
-
   if ((fileUrl || imageUrl) && !attachment) {
     return { success: false, error: "Invalid attachment metadata" };
+  }
+
+  if (!trimmedText && !attachment) {
+    return { success: false, error: "Message must have text or a file" };
   }
 
   const raw = await prisma.message.create({
