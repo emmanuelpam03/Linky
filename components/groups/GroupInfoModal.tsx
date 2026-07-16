@@ -229,8 +229,9 @@ export default function GroupInfoModal({
           variant: "error",
         });
       } else {
-        setLocalAvatar(r.imageUrl);
-        onGroupUpdated({ image: r.imageUrl });
+        const avatarUrl = r.imageUrl ?? null;
+        setLocalAvatar(avatarUrl);
+        onGroupUpdated({ image: avatarUrl });
         toast({
           title: "Group avatar updated",
           description: "The new avatar is visible immediately.",
@@ -357,9 +358,19 @@ export default function GroupInfoModal({
       confirmVariant: "destructive",
       onConfirm: async () => {
         setIsClearing(true);
-        const success = await onClearChat();
-        setIsClearing(false);
-        if (success) onClose();
+        try {
+          const success = await onClearChat();
+          if (success) onClose();
+        } catch (error) {
+          toast({
+            title: "Could not clear chat",
+            description: "Try again.",
+            variant: "error",
+          });
+          throw error;
+        } finally {
+          setIsClearing(false);
+        }
       },
     });
   };
