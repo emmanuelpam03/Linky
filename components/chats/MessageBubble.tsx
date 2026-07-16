@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import type { MessageItem } from "@/types";
 import {
@@ -118,6 +118,7 @@ const MessageBubble = ({
         <div className="size-7 shrink-0">
           {showAvatar ? (
             <Avatar size="sm">
+              {sender.image && <AvatarImage src={sender.image} alt={sender.name} />}
               <AvatarFallback
                 className={cn(
                   "text-[10px] font-medium",

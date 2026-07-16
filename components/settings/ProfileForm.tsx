@@ -10,12 +10,14 @@ import { authClient, useSession } from "@/lib/auth-client";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import type { User } from "@/types/auth";
 import { profileSchema, ProfileSchema } from "@/lib/schemas/auth.schema";
 import { uploadAvatar } from "@/app/actions/upload/avatar";
 
 const ProfileForm = () => {
   const { data: session } = useSession();
+  const router = useRouter();
   const user = session?.user as User | undefined;
 
   const [isSuccess, setIsSuccess] = useState(false);
@@ -62,6 +64,7 @@ const ProfileForm = () => {
       return;
     }
 
+    router.refresh();
     setIsUploading(false);
   };
 

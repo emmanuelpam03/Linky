@@ -8,7 +8,7 @@ import {
   useCallback,
 } from "react";
 import { MessageCircle, Users, Loader2, Info } from "lucide-react";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import type { ConversationDetail, MessageItem } from "@/types";
 import { getMessages } from "@/app/actions/messages/list";
 import MessageBubble from "./MessageBubble";
@@ -280,6 +280,9 @@ export default function ChatWindow({ conversation }: ChatWindowProps) {
           className="flex items-center gap-3 border-b border-(--color-border-tertiary) px-6 py-4 cursor-pointer hover:bg-(--color-background-secondary) transition-colors"
         >
           <Avatar size="lg">
+            {conversation.image && (
+              <AvatarImage src={conversation.image} alt={conversation.name} />
+            )}
             <AvatarFallback className="bg-(--color-brand-50) text-sm font-medium text-(--color-brand-900)">
               {conversation.type === "GROUP" ? <Users size={18} /> : initials}
             </AvatarFallback>

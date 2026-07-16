@@ -7,6 +7,7 @@ import {
   validateImageFile,
 } from "@/lib/imagekit/upload";
 import { headers } from "next/headers";
+import { revalidatePath } from "next/cache";
 
 export async function uploadAvatar(formData: FormData) {
   const session = await auth.api.getSession({
@@ -38,6 +39,8 @@ export async function uploadAvatar(formData: FormData) {
       where: { id: session.user.id },
       data: { image: result.url },
     });
+
+    revalidatePath("/", "layout");
 
     return { success: true, imageUrl: result.url };
   } catch (error) {

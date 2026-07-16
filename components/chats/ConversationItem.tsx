@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Users } from "lucide-react";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import type { ConversationListItem } from "@/types";
 
@@ -43,6 +43,9 @@ export default function ConversationItem({
       )}
     >
       <Avatar size="lg">
+        {conversation.image && (
+          <AvatarImage src={conversation.image} alt={conversation.name} />
+        )}
         <AvatarFallback
           className={cn(
             "text-sm font-medium",
