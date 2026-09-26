@@ -6,10 +6,10 @@ import {
   getClientState,
   getConversationClients,
   getConversationMemberIds,
-  removeSubscription,
   sendJson,
   type ClientState,
 } from "./connection-state";
+import { unsubscribeFromConversation } from "./presence-events";
 
 export async function publishMessage(
   socket: WebSocket,
@@ -77,7 +77,7 @@ export async function publishMessage(
 
   const memberIds = await getConversationMemberIds(message.conversationId);
   if (!memberIds.has(state.userId)) {
-    removeSubscription(socket, message.conversationId);
+    await unsubscribeFromConversation(socket, message.conversationId);
     sendJson(socket, {
       type: "error",
       code: "not_a_member",

@@ -19,6 +19,10 @@ export function getClientState(socket: WebSocket) {
   return clientStates.get(socket);
 }
 
+export function clearClientState(socket: WebSocket) {
+  clientStates.delete(socket);
+}
+
 export function getConversationClients(conversationId: string) {
   return conversationClients.get(conversationId) ?? new Set<WebSocket>();
 }
@@ -54,34 +58,13 @@ export function removeSubscription(socket: WebSocket, conversationId: string) {
   }
 }
 
-export function removeClient(socket: WebSocket) {
-  const state = clientStates.get(socket);
-  if (!state) return;
-
-  for (const conversationId of state.subscriptions) {
-    removeSubscription(socket, conversationId);
-  }
-  clientStates.delete(socket);
-}
-
-export async function subscribeToConversation(
+export function addConversationClient(
   socket: WebSocket,
   state: ClientState,
   conversationId: string,
 ) {
-  const membership = await prisma.conversationMember.findFirst({
-    where: { conversationId, userId: state.userId },
-    select: { id: true },
-  });
-
-  if (!membership) {
-    sendJson(socket, { type: "error", code: "not_a_member" });
-    return;
-  }
-
   state.subscriptions.add(conversationId);
   const clients = conversationClients.get(conversationId) ?? new Set<WebSocket>();
   clients.add(socket);
   conversationClients.set(conversationId, clients);
-  sendJson(socket, { type: "subscribed", conversationId });
 }

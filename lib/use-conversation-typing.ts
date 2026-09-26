@@ -4,9 +4,14 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react
 import type { TypingUpdate } from "./websocket";
 
 export function useConversationTyping(conversationId: string | undefined) {
-  const [typingUsers, setTypingUsers] = useState<Record<string, string>>({});
+  const [typingState, setTypingState] = useState({
+    conversationId,
+    users: {} as Record<string, string>,
+  });
   const activeConversationIdRef = useRef(conversationId);
   const timersRef = useRef(new Map<string, number>());
+  const typingUsers =
+    typingState.conversationId === conversationId ? typingState.users : {};
 
   useLayoutEffect(() => {
     activeConversationIdRef.current = conversationId;
@@ -19,7 +24,7 @@ export function useConversationTyping(conversationId: string | undefined) {
         window.clearTimeout(timer);
       }
       timers.clear();
-      setTypingUsers({});
+      setTypingState({ conversationId: undefined, users: {} });
     };
   }, [conversationId]);
 
@@ -34,24 +39,34 @@ export function useConversationTyping(conversationId: string | undefined) {
       }
 
       if (!isTyping) {
-        setTypingUsers((current) => {
-          const next = { ...current };
+        setTypingState((current) => {
+          const users =
+            current.conversationId === conversationId ? current.users : {};
+          const next = { ...users };
           delete next[userId];
-          return next;
+          return { conversationId, users: next };
         });
         return;
       }
 
-      setTypingUsers((current) => ({ ...current, [userId]: name }));
+      setTypingState((current) => ({
+        conversationId,
+        users: {
+          ...(current.conversationId === conversationId ? current.users : {}),
+          [userId]: name,
+        },
+      }));
       timersRef.current.set(
         userId,
         window.setTimeout(() => {
           timersRef.current.delete(userId);
           if (activeConversationIdRef.current !== conversationId) return;
-          setTypingUsers((current) => {
-            const next = { ...current };
+          setTypingState((current) => {
+            const users =
+              current.conversationId === conversationId ? current.users : {};
+            const next = { ...users };
             delete next[userId];
-            return next;
+            return { conversationId, users: next };
           });
         }, 5000),
       );

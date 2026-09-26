@@ -3,10 +3,10 @@ import prisma from "../../lib/prisma";
 import {
   getClientState,
   getConversationClients,
-  removeSubscription,
   sendJson,
   type ClientState,
 } from "./connection-state";
+import { unsubscribeFromConversation } from "./presence-events";
 
 export async function publishTyping(
   socket: WebSocket,
@@ -36,7 +36,7 @@ export async function publishTyping(
   const memberIds = new Set(memberships.map((membership) => membership.userId));
 
   if (!memberIds.has(state.userId)) {
-    removeSubscription(socket, conversationId);
+    await unsubscribeFromConversation(socket, conversationId);
     sendJson(socket, { type: "error", code: "not_a_member" });
     return;
   }

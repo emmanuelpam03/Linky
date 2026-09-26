@@ -83,3 +83,48 @@ test("parseConversationServerEvent validates typing updates", () => {
     null,
   );
 });
+
+test("parseConversationServerEvent validates presence snapshots and updates", () => {
+  assert.deepEqual(
+    parseConversationServerEvent(
+      JSON.stringify({
+        type: "presence.snapshot",
+        conversationId: "conversation-1",
+        users: [{ userId: "user-2", name: "Other User" }],
+      }),
+    ),
+    {
+      type: "presence.snapshot",
+      conversationId: "conversation-1",
+      users: [{ userId: "user-2", name: "Other User" }],
+    },
+  );
+  assert.deepEqual(
+    parseConversationServerEvent(
+      JSON.stringify({
+        type: "presence.updated",
+        conversationId: "conversation-1",
+        userId: "user-2",
+        name: "Other User",
+        isOnline: true,
+      }),
+    ),
+    {
+      type: "presence.updated",
+      conversationId: "conversation-1",
+      userId: "user-2",
+      name: "Other User",
+      isOnline: true,
+    },
+  );
+  assert.equal(
+    parseConversationServerEvent(
+      JSON.stringify({
+        type: "presence.snapshot",
+        conversationId: "conversation-1",
+        users: [{ userId: "user-2" }],
+      }),
+    ),
+    null,
+  );
+});

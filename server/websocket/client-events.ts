@@ -3,11 +3,13 @@ import { WebSocket } from "ws";
 import { z } from "zod";
 import {
   getClientState,
-  removeSubscription,
   sendJson,
-  subscribeToConversation,
 } from "./connection-state";
 import { publishMessage } from "./message-events";
+import {
+  subscribeToConversation,
+  unsubscribeFromConversation,
+} from "./presence-events";
 import { publishTyping } from "./typing-events";
 
 const clientEventSchema = z.discriminatedUnion("type", [
@@ -79,7 +81,7 @@ export async function handleClientMessage(
       await subscribeToConversation(socket, state, parsed.data.conversationId);
       break;
     case "unsubscribe":
-      removeSubscription(socket, parsed.data.conversationId);
+      await unsubscribeFromConversation(socket, parsed.data.conversationId);
       sendJson(socket, {
         type: "unsubscribed",
         conversationId: parsed.data.conversationId,

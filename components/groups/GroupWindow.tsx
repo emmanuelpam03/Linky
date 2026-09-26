@@ -9,6 +9,7 @@ import MessageBubble from "@/components/chats/MessageBubble";
 import MessageComposer from "@/components/chats/MessageComposer";
 import TypingIndicator from "@/components/chats/TypingIndicator";
 import RealtimeStatusBadge from "@/components/chats/RealtimeStatusBadge";
+import ConversationPresenceLabel from "@/components/chats/ConversationPresenceLabel";
 import GroupSettingsPanel from "./GroupSettingsPanel";
 import GroupInfoModal from "./GroupInfoModal";
 import { useConversationRealtime } from "@/lib/use-conversation-realtime";
@@ -49,6 +50,7 @@ export default function GroupWindow({ group }: GroupWindowProps) {
   const {
     status: realtimeStatus,
     typingUsers,
+    onlineUsers,
     publishMessage,
     publishTyping,
   } = useConversationRealtime(group?.id, handleRealtimeMessage);
@@ -200,6 +202,10 @@ export default function GroupWindow({ group }: GroupWindowProps) {
             <p className="text-xs text-(--color-text-tertiary)">
               {groupData?.memberCount ?? group.memberCount} members
             </p>
+            <ConversationPresenceLabel
+              conversationType="GROUP"
+              onlineUsers={onlineUsers}
+            />
             <RealtimeStatusBadge status={realtimeStatus} />
           </div>
           <button

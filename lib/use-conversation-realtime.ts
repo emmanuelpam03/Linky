@@ -7,6 +7,7 @@ import {
   type RealtimeStatus,
 } from "./websocket";
 import { useConversationTyping } from "./use-conversation-typing";
+import { useConversationPresence } from "./use-conversation-presence";
 
 export function useConversationRealtime(
   conversationId: string | undefined,
@@ -20,6 +21,8 @@ export function useConversationRealtime(
   const onMessageRef = useRef(onMessage);
   const { typingUsers, handleTypingUpdate } =
     useConversationTyping(conversationId);
+  const { onlineUsers, handlePresenceEvent } =
+    useConversationPresence(conversationId);
 
   useLayoutEffect(() => {
     activeConversationIdRef.current = conversationId;
@@ -41,6 +44,7 @@ export function useConversationRealtime(
       },
       setStatus,
       handleTypingUpdate,
+      handlePresenceEvent,
     );
     socketRef.current = socket;
 
@@ -50,7 +54,7 @@ export function useConversationRealtime(
         socketRef.current = null;
       }
     };
-  }, [conversationId, handleTypingUpdate]);
+  }, [conversationId, handleTypingUpdate, handlePresenceEvent]);
 
   const publishMessage = useCallback((messageId: string) => {
     socketRef.current?.publishMessage(messageId);
@@ -64,5 +68,11 @@ export function useConversationRealtime(
     [],
   );
 
-  return { status, typingUsers, publishMessage, publishTyping };
+  return {
+    status,
+    typingUsers,
+    onlineUsers,
+    publishMessage,
+    publishTyping,
+  };
 }

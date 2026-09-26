@@ -7,10 +7,10 @@ import { auth } from "../lib/auth";
 import prisma from "../lib/prisma";
 import { handleClientMessage } from "./websocket/client-events";
 import {
-  removeClient,
   sendJson,
   setClientState,
 } from "./websocket/connection-state";
+import { removeClient } from "./websocket/presence-events";
 
 const port = Number(process.env.WS_PORT ?? 3001);
 const appUrl = process.env.NEXT_PUBLIC_APP_URL;
@@ -106,7 +106,11 @@ webSocketServer.on("connection", (socket) => {
       });
   });
 
-  socket.on("close", () => removeClient(socket));
+  socket.on("close", () => {
+    void removeClient(socket).catch((error: unknown) => {
+      console.error("Failed to remove a disconnected WebSocket client:", error);
+    });
+  });
   socket.on("error", (error) => {
     console.error("WebSocket connection error:", error.message);
   });

@@ -12,6 +12,25 @@ export type TypingUpdate = {
   isTyping: boolean;
 };
 
+export type PresenceUser = {
+  userId: string;
+  name: string;
+};
+
+export type PresenceEvent =
+  | {
+      type: "presence.snapshot";
+      conversationId: string;
+      users: PresenceUser[];
+    }
+  | {
+      type: "presence.updated";
+      conversationId: string;
+      userId: string;
+      name: string;
+      isOnline: boolean;
+    };
+
 export type ConversationServerEvent =
   | { type: "ready" }
   | { type: "subscribed"; conversationId: string }
@@ -29,6 +48,7 @@ export type ConversationServerEvent =
       name: string;
       isTyping: boolean;
     }
+  | PresenceEvent
   | { type: "error"; code: string; messageId?: string };
 
 type SerializedMessage = Omit<MessageItem, "createdAt"> & {
@@ -55,6 +75,14 @@ function isSerializedMessage(value: unknown): value is SerializedMessage {
     typeof sender.name === "string" &&
     typeof sender.username === "string" &&
     (typeof sender.image === "string" || sender.image === null)
+  );
+}
+
+function isPresenceUser(value: unknown): value is PresenceUser {
+  return (
+    isRecord(value) &&
+    typeof value.userId === "string" &&
+    typeof value.name === "string"
   );
 }
 
@@ -111,6 +139,29 @@ export function parseConversationServerEvent(
             isTyping: value.isTyping,
           }
         : null;
+    case "presence.snapshot":
+      return typeof value.conversationId === "string" &&
+        Array.isArray(value.users) &&
+        value.users.every(isPresenceUser)
+        ? {
+            type: value.type,
+            conversationId: value.conversationId,
+            users: value.users,
+          }
+        : null;
+    case "presence.updated":
+      return typeof value.conversationId === "string" &&
+        typeof value.userId === "string" &&
+        typeof value.name === "string" &&
+        typeof value.isOnline === "boolean"
+        ? {
+            type: value.type,
+            conversationId: value.conversationId,
+            userId: value.userId,
+            name: value.name,
+            isOnline: value.isOnline,
+          }
+        : null;
     case "error":
       if (typeof value.code !== "string") return null;
       return {
@@ -130,6 +181,7 @@ export function connectToConversation(
   onMessage: (message: MessageItem) => void,
   onStatus: (status: RealtimeStatus) => void,
   onTyping: (update: TypingUpdate) => void,
+  onPresence: (event: PresenceEvent) => void,
 ) {
   const url = process.env.NEXT_PUBLIC_WS_URL;
   if (!url) {
@@ -254,6 +306,15 @@ export function connectToConversation(
           name: serverEvent.name,
           isTyping: serverEvent.isTyping,
         });
+        return;
+      }
+
+      if (
+        (serverEvent.type === "presence.snapshot" ||
+          serverEvent.type === "presence.updated") &&
+        serverEvent.conversationId === conversationId
+      ) {
+        onPresence(serverEvent);
         return;
       }
 

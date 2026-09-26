@@ -47,4 +47,5 @@ pnpm dev:ws
 The local environment should set `NEXT_PUBLIC_WS_URL="ws://localhost:3001"` and
 `WS_PORT=3001`. In an open conversation, the header shows `Live` when the
 authenticated WebSocket connection is ready. Direct and group conversations
-deliver new messages and show a typing indicator to other open participants.
+deliver new messages, show typing indicators, and display presence for members
+currently connected to that conversation.
