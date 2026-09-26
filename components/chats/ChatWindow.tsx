@@ -416,6 +416,13 @@ export default function ChatWindow({ conversation }: ChatWindowProps) {
             />
             <RealtimeStatusBadge status={realtimeStatus} />
           </div>
+          {conversation.type === "DIRECT" && (
+            <ConversationCallPanel
+              key={conversation.id}
+              conversationId={conversation.id}
+              isGroup={false}
+            />
+          )}
           <button
             onClick={(e) => {
               e.stopPropagation();
@@ -453,14 +460,6 @@ export default function ChatWindow({ conversation }: ChatWindowProps) {
             )}
           </button>
         </header>
-
-        {conversation.type === "DIRECT" && (
-          <ConversationCallPanel
-            key={conversation.id}
-            conversationId={conversation.id}
-            isGroup={false}
-          />
-        )}
 
         {showSearch && (
           <MessageSearchPanel

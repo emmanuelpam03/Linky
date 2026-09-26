@@ -33,7 +33,6 @@ export default function ConversationCallPanel({
   conversationId,
   isGroup,
 }: ConversationCallPanelProps) {
-  const maxParticipants = isGroup ? 6 : 2;
   const [isSocketReady, setIsSocketReady] = useState(false);
   const [isCallActive, setIsCallActive] = useState(false);
   const [isJoined, setIsJoined] = useState(false);
@@ -477,67 +476,126 @@ export default function ConversationCallPanel({
   };
 
   return (
-    <div className="border-b border-(--color-border-tertiary) bg-(--color-background-secondary) px-4 py-3">
-      {incomingCall && !isJoined ? (
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <p className="text-sm text-(--color-text-primary)">
-            {incomingCall.hostName} started a {incomingCall.mediaType === "video" ? "video" : "voice"} call.
-          </p>
-          <div className="flex gap-2">
+    <>
+      <div
+        className="flex items-center gap-1"
+        onClick={(event) => event.stopPropagation()}
+      >
+        {incomingCall && !isJoined ? (
+          <>
             <button
               type="button"
               onClick={() => void joinCall()}
-              disabled={isStarting}
-              className="rounded-lg bg-(--color-brand-400) px-3 py-2 text-sm text-white disabled:opacity-50"
+              disabled={isStarting || !isSocketReady}
+              aria-label={`Answer ${incomingCall.mediaType} call from ${incomingCall.hostName}`}
+              title={`Answer ${incomingCall.mediaType} call from ${incomingCall.hostName}`}
+              className="flex size-9 items-center justify-center rounded-full bg-(--color-brand-400) text-white disabled:opacity-50"
             >
-              {isStarting ? <Loader2 className="size-4 animate-spin" /> : "Join"}
+              {isStarting ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : incomingCall.mediaType === "video" ? (
+                <Video className="size-4" />
+              ) : (
+                <Phone className="size-4" />
+              )}
             </button>
             <button
               type="button"
               onClick={() => setIncomingCall(null)}
-              className="rounded-lg border border-(--color-border-secondary) px-3 py-2 text-sm text-(--color-text-secondary)"
+              aria-label="Dismiss incoming call"
+              title="Dismiss incoming call"
+              className="flex size-9 items-center justify-center rounded-full border border-(--color-border-secondary) text-(--color-text-secondary)"
             >
               <X className="size-4" />
             </button>
-          </div>
-        </div>
-      ) : isCallActive && isJoined ? (
-        <div className="space-y-3">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <p className="text-sm font-medium text-(--color-text-primary)">
-              {mediaType === "video" ? "Video" : "Voice"} call · {participants.length}/{maxParticipants}
-            </p>
-            <div className="flex items-center gap-2">
+          </>
+        ) : isCallActive && isJoined ? (
+          <>
+            <button
+              type="button"
+              onClick={toggleMute}
+              aria-label={isMuted ? "Unmute microphone" : "Mute microphone"}
+              title={isMuted ? "Unmute microphone" : "Mute microphone"}
+              className="flex size-9 items-center justify-center rounded-full border border-(--color-border-secondary) text-(--color-text-primary)"
+            >
+              {isMuted ? <MicOff className="size-4" /> : <Mic className="size-4" />}
+            </button>
+            {mediaType === "video" && (
               <button
                 type="button"
-                onClick={toggleMute}
-                aria-label={isMuted ? "Unmute microphone" : "Mute microphone"}
-                className="rounded-lg border border-(--color-border-secondary) p-2 text-(--color-text-primary)"
+                onClick={toggleCamera}
+                aria-label={isCameraOff ? "Turn camera on" : "Turn camera off"}
+                title={isCameraOff ? "Turn camera on" : "Turn camera off"}
+                className="flex size-9 items-center justify-center rounded-full border border-(--color-border-secondary) text-(--color-text-primary)"
               >
-                {isMuted ? <MicOff className="size-4" /> : <Mic className="size-4" />}
+                {isCameraOff ? (
+                  <CameraOff className="size-4" />
+                ) : (
+                  <Camera className="size-4" />
+                )}
               </button>
-              {mediaType === "video" && (
-                <button
-                  type="button"
-                  onClick={toggleCamera}
-                  aria-label={isCameraOff ? "Turn camera on" : "Turn camera off"}
-                  className="rounded-lg border border-(--color-border-secondary) p-2 text-(--color-text-primary)"
-                >
-                  {isCameraOff ? <CameraOff className="size-4" /> : <Camera className="size-4" />}
-                </button>
+            )}
+            <button
+              type="button"
+              onClick={leaveCall}
+              aria-label="End call"
+              title="End call"
+              className="flex size-9 items-center justify-center rounded-full bg-(--color-coral-500) text-white"
+            >
+              <PhoneOff className="size-4" />
+            </button>
+          </>
+        ) : (
+          <>
+            <button
+              type="button"
+              onClick={() => void startCall("audio")}
+              disabled={!isSocketReady || isStarting}
+              aria-label="Start voice call"
+              title={isSocketReady ? "Start voice call" : "Connecting to call server"}
+              className="flex size-9 items-center justify-center rounded-full border border-(--color-border-secondary) text-(--color-text-primary) disabled:opacity-50"
+            >
+              {isStarting ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <Phone className="size-4" />
               )}
-              <button
-                type="button"
-                onClick={leaveCall}
-                className="flex items-center gap-2 rounded-lg bg-(--color-coral-500) px-3 py-2 text-sm text-white"
-              >
-                <PhoneOff className="size-4" />
-                Leave
-              </button>
-            </div>
-          </div>
-          {callError && <p role="alert" className="text-xs text-(--color-coral-500)">{callError}</p>}
-          <div className="grid grid-cols-2 gap-2 md:grid-cols-3">
+            </button>
+            <button
+              type="button"
+              onClick={() => void startCall("video")}
+              disabled={!isSocketReady || isStarting}
+              aria-label="Start video call"
+              title={isSocketReady ? "Start video call" : "Connecting to call server"}
+              className="flex size-9 items-center justify-center rounded-full border border-(--color-border-secondary) text-(--color-text-primary) disabled:opacity-50"
+            >
+              {isStarting ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <Video className="size-4" />
+              )}
+            </button>
+          </>
+        )}
+      </div>
+      {(callError || !process.env.NEXT_PUBLIC_WS_URL) && (
+        <p
+          role="alert"
+          className="fixed bottom-4 left-4 z-50 max-w-sm rounded-lg bg-(--color-background-secondary) px-3 py-2 text-xs text-(--color-coral-500) shadow-lg"
+        >
+          {callError || "NEXT_PUBLIC_WS_URL is required for calls."}
+        </p>
+      )}
+      {isCallActive && isJoined && (
+        <section
+          aria-label={`${mediaType === "video" ? "Video" : "Voice"} call`}
+          onClick={(event) => event.stopPropagation()}
+          className="fixed bottom-20 right-4 z-40 max-h-[45vh] w-[min(90vw,32rem)] overflow-auto rounded-xl border border-(--color-border-secondary) bg-(--color-background-secondary) p-3 shadow-xl"
+        >
+          <p className="mb-2 text-xs font-medium text-(--color-text-secondary)">
+            {mediaType === "video" ? "Video call" : "Voice call"}
+          </p>
+          <div className="grid grid-cols-2 gap-2">
             {mediaType === "video" && localStream && (
               <video
                 autoPlay
@@ -600,49 +658,13 @@ export default function ConversationCallPanel({
                   });
                 }
               }}
-              className="rounded-lg bg-(--color-brand-400) px-3 py-2 text-sm text-white"
+              className="mt-2 rounded-lg bg-(--color-brand-400) px-3 py-2 text-sm text-white"
             >
               Enable microphone and camera
             </button>
           )}
-        </div>
-      ) : (
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <span className="text-xs text-(--color-text-secondary)">
-            Calls support up to {maxParticipants} people.
-          </span>
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={() => void startCall("audio")}
-              disabled={!isSocketReady || isStarting}
-              className="flex items-center gap-2 rounded-lg border border-(--color-border-secondary) px-3 py-2 text-sm text-(--color-text-primary) disabled:opacity-50"
-            >
-              {isStarting ? <Loader2 className="size-4 animate-spin" /> : <Phone className="size-4" />}
-              Voice call
-            </button>
-            <button
-              type="button"
-              onClick={() => void startCall("video")}
-              disabled={!isSocketReady || isStarting}
-              className="flex items-center gap-2 rounded-lg border border-(--color-border-secondary) px-3 py-2 text-sm text-(--color-text-primary) disabled:opacity-50"
-            >
-              {isStarting ? <Loader2 className="size-4 animate-spin" /> : <Video className="size-4" />}
-              Video call
-            </button>
-          </div>
-        </div>
+        </section>
       )}
-      {!incomingCall && callError && !isCallActive && (
-        <p role="alert" className="mt-2 text-xs text-(--color-coral-500)">
-          {callError}
-        </p>
-      )}
-      {!process.env.NEXT_PUBLIC_WS_URL && (
-        <p role="alert" className="mt-2 text-xs text-(--color-coral-500)">
-          NEXT_PUBLIC_WS_URL is required for calls.
-        </p>
-      )}
-    </div>
+    </>
   );
 }

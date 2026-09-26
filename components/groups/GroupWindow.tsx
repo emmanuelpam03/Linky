@@ -272,6 +272,11 @@ export default function GroupWindow({ group }: GroupWindowProps) {
             />
             <RealtimeStatusBadge status={realtimeStatus} />
           </div>
+          <ConversationCallPanel
+            key={group.id}
+            conversationId={group.id}
+            isGroup
+          />
           <button
             onClick={(e) => {
               e.stopPropagation();
@@ -304,12 +309,6 @@ export default function GroupWindow({ group }: GroupWindowProps) {
             <Info className="size-5" />
           </button>
         </header>
-
-        <ConversationCallPanel
-          key={group.id}
-          conversationId={group.id}
-          isGroup
-        />
 
         {showSearch && (
           <MessageSearchPanel

@@ -65,6 +65,8 @@ appear in the in-app Alerts page. Use a message's context menu to edit or pin it
 Direct voice and video calls are available between friends; group calls use
 peer-to-peer WebRTC mesh and support up to six participants. Browsers must allow
 microphone/camera access. STUN is configured by default; networks that block
-direct connections may require a TURN service.
+direct connections may require a TURN service. Start a call from the phone or
+video icon at the right of the conversation header; microphone, camera, and end
+call controls stay there during the call.
 Set the server-only `TURN_URL`, `TURN_USERNAME`, and `TURN_CREDENTIAL` values
 from `.env.example` when one is available.
