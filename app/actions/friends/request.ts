@@ -3,7 +3,13 @@
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth-session";
 
-export async function sendFriendRequest(receiverId: string) {
+type SendFriendRequestResult =
+  | { success: true; data: { id: string } }
+  | { success: false; error: string };
+
+export async function sendFriendRequest(
+  receiverId: string,
+): Promise<SendFriendRequestResult> {
   const session = await getSession();
   if (!session?.user) return { success: false, error: "Unauthorized" };
 

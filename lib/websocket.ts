@@ -71,7 +71,19 @@ export type ConversationServerEvent =
   | PresenceEvent
   | ReadReceiptEvent
   | { type: "read.published"; conversationId: string }
-  | { type: "error"; code: string; messageId?: string };
+  | {
+      type: "friend.request.updated";
+      requestId: string;
+      senderId: string;
+      receiverId: string;
+      status: "PENDING" | "ACCEPTED";
+    }
+  | {
+      type: "friend.request.published";
+      requestId: string;
+      status: "PENDING" | "ACCEPTED";
+    }
+  | { type: "error"; code: string; messageId?: string; requestId?: string };
 
 type SerializedMessage = Omit<MessageItem, "createdAt"> & {
   createdAt: string;
@@ -232,6 +244,28 @@ export function parseConversationServerEvent(
       return typeof value.conversationId === "string"
         ? { type: value.type, conversationId: value.conversationId }
         : null;
+    case "friend.request.updated":
+      return typeof value.requestId === "string" &&
+        typeof value.senderId === "string" &&
+        typeof value.receiverId === "string" &&
+        (value.status === "PENDING" || value.status === "ACCEPTED")
+        ? {
+            type: value.type,
+            requestId: value.requestId,
+            senderId: value.senderId,
+            receiverId: value.receiverId,
+            status: value.status,
+          }
+        : null;
+    case "friend.request.published":
+      return typeof value.requestId === "string" &&
+        (value.status === "PENDING" || value.status === "ACCEPTED")
+        ? {
+            type: value.type,
+            requestId: value.requestId,
+            status: value.status,
+          }
+        : null;
     case "error":
       if (typeof value.code !== "string") return null;
       return {
@@ -239,6 +273,9 @@ export function parseConversationServerEvent(
         code: value.code,
         ...(typeof value.messageId === "string"
           ? { messageId: value.messageId }
+          : {}),
+        ...(typeof value.requestId === "string"
+          ? { requestId: value.requestId }
           : {}),
       };
     default:

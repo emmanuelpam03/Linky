@@ -10,9 +10,13 @@ export type ClientState = {
 
 const clientStates = new WeakMap<WebSocket, ClientState>();
 const conversationClients = new Map<string, Set<WebSocket>>();
+const userClients = new Map<string, Set<WebSocket>>();
 
 export function setClientState(socket: WebSocket, state: ClientState) {
   clientStates.set(socket, state);
+  const clients = userClients.get(state.userId) ?? new Set<WebSocket>();
+  clients.add(socket);
+  userClients.set(state.userId, clients);
 }
 
 export function getClientState(socket: WebSocket) {
@@ -20,7 +24,17 @@ export function getClientState(socket: WebSocket) {
 }
 
 export function clearClientState(socket: WebSocket) {
+  const state = clientStates.get(socket);
+  if (state) {
+    const clients = userClients.get(state.userId);
+    clients?.delete(socket);
+    if (clients?.size === 0) userClients.delete(state.userId);
+  }
   clientStates.delete(socket);
+}
+
+export function getUserClients(userId: string) {
+  return userClients.get(userId) ?? new Set<WebSocket>();
 }
 
 export function getConversationClients(conversationId: string) {

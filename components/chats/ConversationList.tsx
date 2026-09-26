@@ -6,8 +6,10 @@ import ConversationItem from "./ConversationItem";
 import { Loader2 } from "lucide-react";
 import type { ConversationListItem } from "@/types";
 import { getConversations } from "@/app/actions/conversations/list";
+import { useAppRealtime } from "@/components/providers/AppRealtimeProvider";
 
 export default function ConversationList() {
+  const { typingByConversation } = useAppRealtime();
   const [query, setQuery] = useState("");
   const [conversations, setConversations] = useState<ConversationListItem[]>(
     [],
@@ -68,6 +70,9 @@ export default function ConversationList() {
             <ConversationItem
               key={conversation.id}
               conversation={conversation}
+              typingUsers={Object.values(
+                typingByConversation[conversation.id] ?? {},
+              )}
             />
           ))
         )}

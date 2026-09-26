@@ -9,6 +9,7 @@ import { searchUsers } from "@/app/actions/friends/search";
 import { sendFriendRequest } from "@/app/actions/friends/request";
 import type { UserResult } from "@/types";
 import { useDebounce } from "@/hooks/useDebounce";
+import { useAppRealtime } from "@/components/providers/AppRealtimeProvider";
 
 type AddFriendModalProps = {
   onClose: () => void;
@@ -28,6 +29,7 @@ const AddFriendModal = ({ onClose }: AddFriendModalProps) => {
   );
   const inputRef = useRef<HTMLInputElement>(null);
   const debouncedQuery = useDebounce(query, 400);
+  const { publishFriendRequestUpdate } = useAppRealtime();
 
   // Focus input on mount
   useEffect(() => {
@@ -74,6 +76,7 @@ const AddFriendModal = ({ onClose }: AddFriendModalProps) => {
     }
 
     setRequestStates((prev) => ({ ...prev, [userId]: "sent" }));
+    publishFriendRequestUpdate(result.data.id, "PENDING");
   };
 
   // Close on backdrop click

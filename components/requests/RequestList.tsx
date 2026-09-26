@@ -16,6 +16,7 @@ import {
   cancelFriendRequest,
 } from "@/app/actions/friends/request";
 import type { FriendRequest } from "@/types";
+import { useAppRealtime } from "@/components/providers/AppRealtimeProvider";
 
 type Tab = "incoming" | "sent";
 
@@ -30,31 +31,35 @@ const RequestList = () => {
   >({});
 
   const [actionErrors, setActionErrors] = useState<Record<string, string>>({});
+  const { friendRequestRevision, publishFriendRequestUpdate } =
+    useAppRealtime();
 
   useEffect(() => {
+    let active = true;
     const load = async () => {
-      setIsLoading(true);
-
       try {
         const [incomingResult, sentResult] = await Promise.all([
           getIncomingRequests(),
           getSentRequests(),
         ]);
 
-        if (incomingResult.success) {
+        if (active && incomingResult.success) {
           setIncoming(incomingResult.data);
         }
 
-        if (sentResult.success) {
+        if (active && sentResult.success) {
           setSent(sentResult.data);
         }
       } finally {
-        setIsLoading(false);
+        if (active) setIsLoading(false);
       }
     };
 
-    load();
-  }, []);
+    void load();
+    return () => {
+      active = false;
+    };
+  }, [friendRequestRevision]);
 
   const handleAccept = async (requestId: string) => {
     setActionLoading((prev) => ({
@@ -79,6 +84,7 @@ const RequestList = () => {
       }
 
       setIncoming((prev) => prev.filter((r) => r.id !== requestId));
+      publishFriendRequestUpdate(requestId, "ACCEPTED");
     } finally {
       setActionLoading((prev) => ({
         ...prev,

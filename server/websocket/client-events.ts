@@ -6,6 +6,7 @@ import {
   sendJson,
 } from "./connection-state";
 import { publishMessage } from "./message-events";
+import { publishFriendRequestUpdate } from "./friend-events";
 import {
   subscribeToConversation,
   unsubscribeFromConversation,
@@ -43,6 +44,13 @@ const clientEventSchema = z.discriminatedUnion("type", [
     .object({
       type: z.literal("conversation.read"),
       conversationId: z.string().min(1).max(128),
+    })
+    .strict(),
+  z
+    .object({
+      type: z.literal("friend.request.publish"),
+      requestId: z.string().min(1).max(128),
+      status: z.enum(["PENDING", "ACCEPTED"]),
     })
     .strict(),
 ]);
@@ -110,6 +118,14 @@ export async function handleClientMessage(
         socket,
         state,
         parsed.data.conversationId,
+      );
+      break;
+    case "friend.request.publish":
+      await publishFriendRequestUpdate(
+        socket,
+        state,
+        parsed.data.requestId,
+        parsed.data.status,
       );
       break;
   }

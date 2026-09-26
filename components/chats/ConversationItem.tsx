@@ -9,10 +9,12 @@ import type { ConversationListItem } from "@/types";
 
 type ConversationItemProps = {
   conversation: ConversationListItem;
+  typingUsers?: string[];
 };
 
 export default function ConversationItem({
   conversation,
+  typingUsers = [],
 }: ConversationItemProps) {
   const pathname = usePathname();
   const href = `/chats/${conversation.id}`;
@@ -33,6 +35,14 @@ export default function ConversationItem({
         hour12: true,
       }).format(new Date(conversation.lastMessageAt))
     : null;
+  const typingPreview =
+    typingUsers.length === 0
+      ? null
+      : conversation.type === "DIRECT"
+        ? "Typing..."
+        : typingUsers.length === 1
+          ? `${typingUsers[0]} is typing...`
+          : `${typingUsers.length} people are typing...`;
 
   return (
     <Link
@@ -70,8 +80,15 @@ export default function ConversationItem({
           )}
         </div>
         <div className="flex items-center justify-between gap-2">
-          <p className="truncate text-sm text-(--color-text-secondary)">
-            {conversation.lastMessage ?? "No messages yet"}
+          <p
+            className={cn(
+              "truncate text-sm",
+              typingPreview
+                ? "font-medium text-(--color-brand-600)"
+                : "text-(--color-text-secondary)",
+            )}
+          >
+            {typingPreview ?? conversation.lastMessage ?? "No messages yet"}
           </p>
           {conversation.unreadCount > 0 && (
             <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-(--color-brand-400) text-[10px] font-medium text-white">

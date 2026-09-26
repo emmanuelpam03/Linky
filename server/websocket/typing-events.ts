@@ -1,8 +1,7 @@
 import { WebSocket } from "ws";
 import prisma from "../../lib/prisma";
 import {
-  getClientState,
-  getConversationClients,
+  getUserClients,
   sendJson,
   type ClientState,
 } from "./connection-state";
@@ -41,23 +40,17 @@ export async function publishTyping(
     return;
   }
 
-  for (const recipient of getConversationClients(conversationId)) {
-    const recipientState = getClientState(recipient);
-    if (
-      !recipientState ||
-      recipientState.userId === state.userId ||
-      !recipientState.subscriptions.has(conversationId) ||
-      !memberIds.has(recipientState.userId)
-    ) {
-      continue;
-    }
+  for (const userId of memberIds) {
+    if (userId === state.userId) continue;
 
-    sendJson(recipient, {
-      type: "typing.updated",
-      conversationId,
-      userId: state.userId,
-      name: state.name,
-      isTyping,
-    });
+    for (const recipient of getUserClients(userId)) {
+      sendJson(recipient, {
+        type: "typing.updated",
+        conversationId,
+        userId: state.userId,
+        name: state.name,
+        isTyping,
+      });
+    }
   }
 }

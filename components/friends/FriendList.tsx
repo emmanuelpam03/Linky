@@ -8,21 +8,27 @@ import { Button } from "@/components/ui/button";
 import { UserPlus, Loader2 } from "lucide-react";
 import { getFriends } from "@/app/actions/friends/list";
 import type { Friend } from "@/types";
+import { useAppRealtime } from "@/components/providers/AppRealtimeProvider";
 
 const FriendList = () => {
   const [query, setQuery] = useState("");
   const [friends, setFriends] = useState<Friend[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const { friendshipRevision } = useAppRealtime();
 
   useEffect(() => {
+    let active = true;
     const load = async () => {
       const result = await getFriends();
-      if (result.success) setFriends(result.data);
-      setIsLoading(false);
+      if (active && result.success) setFriends(result.data);
+      if (active) setIsLoading(false);
     };
-    load();
-  }, []);
+    void load();
+    return () => {
+      active = false;
+    };
+  }, [friendshipRevision]);
 
   const filtered = useMemo(
     () =>
