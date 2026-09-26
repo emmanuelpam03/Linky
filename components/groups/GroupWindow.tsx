@@ -7,8 +7,11 @@ import type { GroupDetail, MessageItem } from "@/types";
 import { getMessages } from "@/app/actions/messages/list";
 import MessageBubble from "@/components/chats/MessageBubble";
 import MessageComposer from "@/components/chats/MessageComposer";
+import TypingIndicator from "@/components/chats/TypingIndicator";
+import RealtimeStatusBadge from "@/components/chats/RealtimeStatusBadge";
 import GroupSettingsPanel from "./GroupSettingsPanel";
 import GroupInfoModal from "./GroupInfoModal";
+import { useConversationRealtime } from "@/lib/use-conversation-realtime";
 
 type GroupWindowProps = {
   group?: GroupDetail | null;
@@ -36,6 +39,20 @@ export default function GroupWindow({ group }: GroupWindowProps) {
   const isAppendRef = useRef(false);
   const prevLengthRef = useRef(0);
 
+  const handleRealtimeMessage = useCallback((message: MessageItem) => {
+    setMessages((current) => {
+      if (current.some((item) => item.id === message.id)) return current;
+      isAppendRef.current = true;
+      return [...current, message];
+    });
+  }, []);
+  const {
+    status: realtimeStatus,
+    typingUsers,
+    publishMessage,
+    publishTyping,
+  } = useConversationRealtime(group?.id, handleRealtimeMessage);
+
   const handleGroupUpdated = (updates: Partial<GroupDetail>) => {
     setGroupData((prev) => (prev ? { ...prev, ...updates } : prev));
   };
@@ -57,7 +74,13 @@ export default function GroupWindow({ group }: GroupWindowProps) {
 
         if (result.success) {
           isAppendRef.current = true;
-          setMessages(result.data);
+          setMessages((current) => {
+            const loadedIds = new Set(result.data.map((message) => message.id));
+            return [
+              ...result.data,
+              ...current.filter((message) => !loadedIds.has(message.id)),
+            ];
+          });
           setNextCursor(result.nextCursor);
         }
       } finally {
@@ -113,8 +136,12 @@ export default function GroupWindow({ group }: GroupWindowProps) {
   }, [nextCursor, isLoadingMore, handleLoadMore]);
 
   const handleMessageSent = (message: MessageItem) => {
-    isAppendRef.current = true;
-    setMessages((prev) => [...prev, message]);
+    setMessages((prev) => {
+      if (prev.some((item) => item.id === message.id)) return prev;
+      isAppendRef.current = true;
+      return [...prev, message];
+    });
+    publishMessage(message.id);
   };
 
   const handleMessageUpdated = (
@@ -173,6 +200,7 @@ export default function GroupWindow({ group }: GroupWindowProps) {
             <p className="text-xs text-(--color-text-tertiary)">
               {groupData?.memberCount ?? group.memberCount} members
             </p>
+            <RealtimeStatusBadge status={realtimeStatus} />
           </div>
           <button
             onClick={(e) => {
@@ -240,9 +268,11 @@ export default function GroupWindow({ group }: GroupWindowProps) {
             )}
           </div>
 
+          <TypingIndicator users={typingUsers} />
           <MessageComposer
             conversationId={group.id}
             onMessageSent={handleMessageSent}
+            onTypingChange={publishTyping}
           />
         </div>
       </div>

@@ -34,3 +34,17 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+## Local WebSocket development
+
+Run the Next.js app and WebSocket server in separate terminals:
+
+```bash
+pnpm dev
+pnpm dev:ws
+```
+
+The local environment should set `NEXT_PUBLIC_WS_URL="ws://localhost:3001"` and
+`WS_PORT=3001`. In an open conversation, the header shows `Live` when the
+authenticated WebSocket connection is ready. Direct and group conversations
+deliver new messages and show a typing indicator to other open participants.

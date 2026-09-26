@@ -13,6 +13,8 @@ import type { ConversationDetail, MessageItem } from "@/types";
 import { getMessages } from "@/app/actions/messages/list";
 import MessageBubble from "./MessageBubble";
 import MessageComposer from "./MessageComposer";
+import TypingIndicator from "./TypingIndicator";
+import RealtimeStatusBadge from "./RealtimeStatusBadge";
 import ChatSettingsPanel from "./ChatSettingsPanel";
 import GroupSettingsPanel from "@/components/groups/GroupSettingsPanel";
 import { getGroup } from "@/app/actions/groups/get";
@@ -21,6 +23,7 @@ import ChatInfoModal from "./ChatInfoModal";
 import GroupInfoModal from "@/components/groups/GroupInfoModal";
 import { clearChat } from "@/app/actions/conversations/settings";
 import { useToast } from "@/components/ui/toast";
+import { useConversationRealtime } from "@/lib/use-conversation-realtime";
 
 type ChatWindowProps = {
   conversation?: ConversationDetail | null;
@@ -44,6 +47,29 @@ export default function ChatWindow({ conversation }: ChatWindowProps) {
   const messagesRef = useRef<MessageItem[]>([]);
   const nextCursorRef = useRef<string | null>(null);
   const { toast } = useToast();
+  const activeConversationId = conversation?.id;
+
+  const handleRealtimeMessage = useCallback(
+    (message: MessageItem) => {
+      if (conversationIdRef.current !== activeConversationId) return;
+
+      setMessages((currentMessages) =>
+        currentMessages.some((current) => current.id === message.id)
+          ? currentMessages
+          : [...currentMessages, message],
+      );
+      requestAnimationFrame(() =>
+        bottomRef.current?.scrollIntoView({ behavior: "smooth" }),
+      );
+    },
+    [activeConversationId],
+  );
+  const {
+    status: realtimeStatus,
+    typingUsers,
+    publishMessage,
+    publishTyping,
+  } = useConversationRealtime(activeConversationId, handleRealtimeMessage);
 
   useLayoutEffect(() => {
     conversationIdRef.current = conversation?.id;
@@ -71,7 +97,13 @@ export default function ChatWindow({ conversation }: ChatWindowProps) {
       if (cancelled) return;
 
       if (result.success) {
-        setMessages(result.data);
+        setMessages((current) => {
+          const loadedIds = new Set(result.data.map((message) => message.id));
+          return [
+            ...result.data,
+            ...current.filter((message) => !loadedIds.has(message.id)),
+          ];
+        });
         setNextCursor(result.nextCursor);
       }
       setIsLoading(false);
@@ -138,7 +170,12 @@ export default function ChatWindow({ conversation }: ChatWindowProps) {
   }, []);
 
   const handleMessageSent = (message: MessageItem) => {
-    setMessages((prev) => [...prev, message]);
+    setMessages((prev) =>
+      prev.some((current) => current.id === message.id)
+        ? prev
+        : [...prev, message],
+    );
+    publishMessage(message.id);
     setReplyTo(null);
     requestAnimationFrame(() => bottomRef.current?.scrollIntoView({ behavior: "smooth" }));
   };
@@ -308,6 +345,7 @@ export default function ChatWindow({ conversation }: ChatWindowProps) {
                 ? `@${conversation.otherUser?.username}`
                 : "Group"}
             </p>
+            <RealtimeStatusBadge status={realtimeStatus} />
           </div>
           <button
             onClick={(e) => {
@@ -388,9 +426,11 @@ export default function ChatWindow({ conversation }: ChatWindowProps) {
             )}
           </div>
 
+          <TypingIndicator users={typingUsers} />
           <MessageComposer
             conversationId={conversation.id}
             onMessageSent={handleMessageSent}
+            onTypingChange={publishTyping}
             replyTo={replyTo}
             onCancelReply={() => setReplyTo(null)}
           />

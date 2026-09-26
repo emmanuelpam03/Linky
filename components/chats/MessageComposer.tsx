@@ -8,10 +8,14 @@ import {
   uploadDocumentToMessage,
 } from "@/app/actions/messages/upload";
 import type { MessageItem } from "@/types";
+import { useTypingNotifications } from "@/lib/use-typing-notifications";
+
+const ignoreTypingChange = () => {};
 
 type MessageComposerProps = {
   conversationId: string;
   onMessageSent: (message: MessageItem) => void;
+  onTypingChange?: (conversationId: string, isTyping: boolean) => void;
   replyTo?: MessageItem | null;
   onCancelReply?: () => void;
 };
@@ -19,6 +23,7 @@ type MessageComposerProps = {
 const MessageComposer = ({
   conversationId,
   onMessageSent,
+  onTypingChange = ignoreTypingChange,
   replyTo = null,
   onCancelReply,
 }: MessageComposerProps) => {
@@ -29,6 +34,10 @@ const MessageComposer = ({
   const [isUploadingFile, setIsUploadingFile] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const isSubmittingRef = useRef(false);
+  const { updateTyping, stopTyping } = useTypingNotifications(
+    conversationId,
+    onTypingChange,
+  );
 
   const handleSend = async () => {
     const trimmed = text.trim();
@@ -36,6 +45,7 @@ const MessageComposer = ({
       return;
     }
 
+    stopTyping();
     isSubmittingRef.current = true;
     setIsSending(true);
     setError(null);
@@ -181,8 +191,10 @@ const MessageComposer = ({
           value={text}
           onChange={(e) => {
             setText(e.target.value);
+            updateTyping(e.target.value);
             if (error) setError(null);
           }}
+          onBlur={stopTyping}
           onKeyDown={handleKeyDown}
           placeholder="Type a message or attach a file..."
           className="flex-1 bg-transparent text-sm text-(--color-text-primary) placeholder:text-(--color-text-tertiary) focus:outline-none"
