@@ -20,6 +20,7 @@ type MessageBubbleProps = {
   onMessageUpdated: (messageId: string, updates: Partial<MessageItem>) => void;
   onReply?: (message: MessageItem) => void;
   readReceipt?: string;
+  onReactionChanged: (messageId: string) => void;
 };
 
 const MessageBubble = ({
@@ -29,6 +30,7 @@ const MessageBubble = ({
   onMessageUpdated,
   onReply,
   readReceipt,
+  onReactionChanged,
 }: MessageBubbleProps) => {
   const {
     id,
@@ -93,14 +95,22 @@ const MessageBubble = ({
   const handleToggleReaction = async (reaction: string) => {
     const existing = (message.reactions ?? []).find((r) => r.reaction === reaction);
     if (existing && existing.reactedByUser) {
-      await removeReaction(id, reaction);
+      const result = await removeReaction(id, reaction);
+      if (!result.success) {
+        console.error("Could not remove message reaction:", result.error);
+        return;
+      }
       onMessageUpdated(id, {
         reactions: (message.reactions ?? []).map((r) =>
           r.reaction === reaction ? { ...r, count: Math.max(0, r.count - 1), reactedByUser: false } : r,
         ),
       });
     } else {
-      await addReaction(id, reaction);
+      const result = await addReaction(id, reaction);
+      if (!result.success) {
+        console.error("Could not add message reaction:", result.error);
+        return;
+      }
       const updated = (message.reactions ?? []).slice();
       const found = updated.find((r) => r.reaction === reaction);
       if (found) {
@@ -111,6 +121,7 @@ const MessageBubble = ({
       }
       onMessageUpdated(id, { reactions: updated });
     }
+    onReactionChanged(id);
     setRecentReactions((prev) => [reaction, ...prev.filter((item) => item !== reaction)].slice(0, 4));
     setReactionQuery("");
     setShowReactionPicker(false);
@@ -120,14 +131,22 @@ const MessageBubble = ({
     const heart = "❤️";
     const existing = (message.reactions ?? []).find((r) => r.reaction === heart);
     if (existing && existing.reactedByUser) {
-      await removeReaction(id, heart);
+      const result = await removeReaction(id, heart);
+      if (!result.success) {
+        console.error("Could not remove message reaction:", result.error);
+        return;
+      }
       onMessageUpdated(id, {
         reactions: (message.reactions ?? []).map((r) =>
           r.reaction === heart ? { ...r, count: Math.max(0, r.count - 1), reactedByUser: false } : r,
         ),
       });
     } else {
-      await addReaction(id, heart);
+      const result = await addReaction(id, heart);
+      if (!result.success) {
+        console.error("Could not add message reaction:", result.error);
+        return;
+      }
       const updated = (message.reactions ?? []).slice();
       const found = updated.find((r) => r.reaction === heart);
       if (found) {
@@ -138,6 +157,7 @@ const MessageBubble = ({
       }
       onMessageUpdated(id, { reactions: updated });
     }
+    onReactionChanged(id);
   };
 
   useEffect(() => {

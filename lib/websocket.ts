@@ -51,6 +51,12 @@ export type ReadReceiptEvent =
       lastReadAt: Date;
     };
 
+export type MessageReactionSummary = {
+  reaction: string;
+  count: number;
+  reactedByUser: boolean;
+};
+
 export type ConversationServerEvent =
   | { type: "ready" }
   | { type: "subscribed"; conversationId: string }
@@ -71,6 +77,13 @@ export type ConversationServerEvent =
   | PresenceEvent
   | ReadReceiptEvent
   | { type: "read.published"; conversationId: string }
+  | {
+      type: "message.reactions.updated";
+      conversationId: string;
+      messageId: string;
+      reactions: MessageReactionSummary[];
+    }
+  | { type: "message.reactions.published"; messageId: string }
   | {
       type: "friend.request.updated";
       requestId: string;
@@ -117,6 +130,19 @@ function isPresenceUser(value: unknown): value is PresenceUser {
     isRecord(value) &&
     typeof value.userId === "string" &&
     typeof value.name === "string"
+  );
+}
+
+function isMessageReactionSummary(
+  value: unknown,
+): value is MessageReactionSummary {
+  return (
+    isRecord(value) &&
+    typeof value.reaction === "string" &&
+    typeof value.count === "number" &&
+    Number.isInteger(value.count) &&
+    value.count >= 0 &&
+    typeof value.reactedByUser === "boolean"
   );
 }
 
@@ -244,6 +270,22 @@ export function parseConversationServerEvent(
       return typeof value.conversationId === "string"
         ? { type: value.type, conversationId: value.conversationId }
         : null;
+    case "message.reactions.updated":
+      return typeof value.conversationId === "string" &&
+        typeof value.messageId === "string" &&
+        Array.isArray(value.reactions) &&
+        value.reactions.every(isMessageReactionSummary)
+        ? {
+            type: value.type,
+            conversationId: value.conversationId,
+            messageId: value.messageId,
+            reactions: value.reactions,
+          }
+        : null;
+    case "message.reactions.published":
+      return typeof value.messageId === "string"
+        ? { type: value.type, messageId: value.messageId }
+        : null;
     case "friend.request.updated":
       return typeof value.requestId === "string" &&
         typeof value.senderId === "string" &&
@@ -290,6 +332,10 @@ export function connectToConversation(
   onTyping: (update: TypingUpdate) => void,
   onPresence: (event: PresenceEvent) => void,
   onReadReceipt: (event: ReadReceiptEvent) => void,
+  onReactionsUpdate: (
+    messageId: string,
+    reactions: MessageReactionSummary[],
+  ) => void,
 ) {
   const url = process.env.NEXT_PUBLIC_WS_URL;
   if (!url) {
@@ -299,6 +345,7 @@ export function connectToConversation(
       publishMessage: () => {},
       publishTyping: () => {},
       publishRead: () => {},
+      publishReaction: () => {},
       close: () => {},
     };
   }
@@ -315,6 +362,7 @@ export function connectToConversation(
       publishMessage: () => {},
       publishTyping: () => {},
       publishRead: () => {},
+      publishReaction: () => {},
       close: () => {},
     };
   }
@@ -326,6 +374,8 @@ export function connectToConversation(
   let closed = false;
   const pendingMessageIds = new Set<string>();
   const sentMessageIds = new Set<string>();
+  const pendingReactionMessageIds = new Set<string>();
+  const sentReactionMessageIds = new Set<string>();
   let pendingRead = document.visibilityState === "visible";
   let sentRead = false;
 
@@ -348,6 +398,14 @@ export function connectToConversation(
       if (sentMessageIds.has(messageId)) continue;
       socket.send(JSON.stringify({ type: "message.publish", messageId }));
       sentMessageIds.add(messageId);
+    }
+
+    for (const messageId of pendingReactionMessageIds) {
+      if (sentReactionMessageIds.has(messageId)) continue;
+      socket.send(
+        JSON.stringify({ type: "message.reactions.publish", messageId }),
+      );
+      sentReactionMessageIds.add(messageId);
     }
   };
 
@@ -468,10 +526,25 @@ export function connectToConversation(
         return;
       }
 
+      if (serverEvent.type === "message.reactions.updated") {
+        if (serverEvent.conversationId === conversationId) {
+          onReactionsUpdate(serverEvent.messageId, serverEvent.reactions);
+        }
+        return;
+      }
+
+      if (serverEvent.type === "message.reactions.published") {
+        pendingReactionMessageIds.delete(serverEvent.messageId);
+        sentReactionMessageIds.delete(serverEvent.messageId);
+        return;
+      }
+
       if (serverEvent.type === "error") {
         if (serverEvent.messageId) {
           pendingMessageIds.delete(serverEvent.messageId);
           sentMessageIds.delete(serverEvent.messageId);
+          pendingReactionMessageIds.delete(serverEvent.messageId);
+          sentReactionMessageIds.delete(serverEvent.messageId);
         }
         console.error("WebSocket request rejected:", serverEvent.code);
       }
@@ -485,6 +558,7 @@ export function connectToConversation(
       if (socket === currentSocket) socket = null;
       subscribed = false;
       sentMessageIds.clear();
+      sentReactionMessageIds.clear();
       pendingRead = pendingRead || sentRead;
       sentRead = false;
       if (closed) return;
@@ -510,6 +584,10 @@ export function connectToConversation(
     },
     publishRead() {
       pendingRead = true;
+      flushPendingMessages();
+    },
+    publishReaction(messageId: string) {
+      pendingReactionMessageIds.add(messageId);
       flushPendingMessages();
     },
     publishTyping(isTyping: boolean) {

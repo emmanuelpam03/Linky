@@ -69,6 +69,16 @@ export default function ChatWindow({ conversation }: ChatWindowProps) {
     },
     [activeConversationId],
   );
+  const handleRealtimeReactions = useCallback(
+    (messageId: string, reactions: NonNullable<MessageItem["reactions"]>) => {
+      setMessages((currentMessages) =>
+        currentMessages.map((message) =>
+          message.id === messageId ? { ...message, reactions } : message,
+        ),
+      );
+    },
+    [],
+  );
   const {
     status: realtimeStatus,
     typingUsers,
@@ -76,7 +86,12 @@ export default function ChatWindow({ conversation }: ChatWindowProps) {
     lastReadAtByUser,
     publishMessage,
     publishTyping,
-  } = useConversationRealtime(activeConversationId, handleRealtimeMessage);
+    publishReaction,
+  } = useConversationRealtime(
+    activeConversationId,
+    handleRealtimeMessage,
+    handleRealtimeReactions,
+  );
 
   useLayoutEffect(() => {
     conversationIdRef.current = conversation?.id;
@@ -422,6 +437,7 @@ export default function ChatWindow({ conversation }: ChatWindowProps) {
                             showAvatar={showAvatar}
                             conversationType={conversation.type}
                             onMessageUpdated={handleMessageUpdated}
+                            onReactionChanged={publishReaction}
                             readReceipt={
                               getReadReceiptLabel(
                                 message,

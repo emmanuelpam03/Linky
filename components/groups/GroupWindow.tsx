@@ -51,6 +51,16 @@ export default function GroupWindow({ group }: GroupWindowProps) {
       return [...current, message];
     });
   }, []);
+  const handleRealtimeReactions = useCallback(
+    (messageId: string, reactions: NonNullable<MessageItem["reactions"]>) => {
+      setMessages((currentMessages) =>
+        currentMessages.map((message) =>
+          message.id === messageId ? { ...message, reactions } : message,
+        ),
+      );
+    },
+    [],
+  );
   const {
     status: realtimeStatus,
     typingUsers,
@@ -58,7 +68,12 @@ export default function GroupWindow({ group }: GroupWindowProps) {
     lastReadAtByUser,
     publishMessage,
     publishTyping,
-  } = useConversationRealtime(group?.id, handleRealtimeMessage);
+    publishReaction,
+  } = useConversationRealtime(
+    group?.id,
+    handleRealtimeMessage,
+    handleRealtimeReactions,
+  );
 
   const handleGroupUpdated = (updates: Partial<GroupDetail>) => {
     setGroupData((prev) => (prev ? { ...prev, ...updates } : prev));
@@ -271,6 +286,7 @@ export default function GroupWindow({ group }: GroupWindowProps) {
                           showAvatar={showAvatar}
                           conversationType="GROUP"
                           onMessageUpdated={handleMessageUpdated}
+                          onReactionChanged={publishReaction}
                           readReceipt={
                             getReadReceiptLabel(
                               message,

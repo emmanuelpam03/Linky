@@ -5,6 +5,7 @@ import {
   getClientState,
   sendJson,
 } from "./connection-state";
+import { publishMessageReactions } from "./reaction-events";
 import { publishMessage } from "./message-events";
 import { publishFriendRequestUpdate } from "./friend-events";
 import {
@@ -30,6 +31,12 @@ const clientEventSchema = z.discriminatedUnion("type", [
   z
     .object({
       type: z.literal("message.publish"),
+      messageId: z.string().min(1).max(128),
+    })
+    .strict(),
+  z
+    .object({
+      type: z.literal("message.reactions.publish"),
       messageId: z.string().min(1).max(128),
     })
     .strict(),
@@ -104,6 +111,9 @@ export async function handleClientMessage(
       break;
     case "message.publish":
       await publishMessage(socket, state, parsed.data.messageId);
+      break;
+    case "message.reactions.publish":
+      await publishMessageReactions(socket, state, parsed.data.messageId);
       break;
     case "typing.update":
       await publishTyping(

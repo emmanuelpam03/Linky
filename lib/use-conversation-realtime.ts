@@ -4,6 +4,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react
 import type { MessageItem } from "../types";
 import {
   connectToConversation,
+  type MessageReactionSummary,
   type RealtimeStatus,
 } from "./websocket";
 import { useConversationTyping } from "./use-conversation-typing";
@@ -13,6 +14,10 @@ import { useConversationReadReceipts } from "./use-conversation-read-receipts";
 export function useConversationRealtime(
   conversationId: string | undefined,
   onMessage: (message: MessageItem) => void,
+  onReactionsUpdate: (
+    messageId: string,
+    reactions: MessageReactionSummary[],
+  ) => void,
 ) {
   const [status, setStatus] = useState<RealtimeStatus>("disconnected");
   const socketRef = useRef<ReturnType<typeof connectToConversation> | null>(
@@ -20,6 +25,7 @@ export function useConversationRealtime(
   );
   const activeConversationIdRef = useRef(conversationId);
   const onMessageRef = useRef(onMessage);
+  const onReactionsUpdateRef = useRef(onReactionsUpdate);
   const { typingUsers, handleTypingUpdate } =
     useConversationTyping(conversationId);
   const { onlineUsers, handlePresenceEvent } =
@@ -35,6 +41,10 @@ export function useConversationRealtime(
     onMessageRef.current = onMessage;
   }, [onMessage]);
 
+  useLayoutEffect(() => {
+    onReactionsUpdateRef.current = onReactionsUpdate;
+  }, [onReactionsUpdate]);
+
   useEffect(() => {
     if (!conversationId) return;
 
@@ -49,6 +59,11 @@ export function useConversationRealtime(
       handleTypingUpdate,
       handlePresenceEvent,
       handleReadReceiptEvent,
+      (messageId, reactions) => {
+        if (activeConversationIdRef.current === conversationId) {
+          onReactionsUpdateRef.current(messageId, reactions);
+        }
+      },
     );
     socketRef.current = socket;
 
@@ -82,6 +97,10 @@ export function useConversationRealtime(
     socketRef.current?.publishRead();
   }, []);
 
+  const publishReaction = useCallback((messageId: string) => {
+    socketRef.current?.publishReaction(messageId);
+  }, []);
+
   return {
     status,
     typingUsers,
@@ -90,5 +109,6 @@ export function useConversationRealtime(
     publishMessage,
     publishTyping,
     publishRead,
+    publishReaction,
   };
 }
