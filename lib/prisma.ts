@@ -1,20 +1,19 @@
 import { PrismaClient } from "../generated/prisma/client";
-import { withAccelerate } from "@prisma/extension-accelerate";
+import { PrismaNeon } from "@prisma/adapter-neon";
 
 const globalForPrisma = globalThis as unknown as {
   prisma: ReturnType<typeof makePrismaClient> | undefined;
 };
 
 function makePrismaClient() {
-  const accelerateUrl = process.env.DATABASE_URL;
+  const connectionString = process.env.DATABASE_URL;
 
-  if (!accelerateUrl) {
-    throw new Error("DATABASE_URL is required for Prisma Accelerate.");
+  if (!connectionString) {
+    throw new Error("DATABASE_URL is required for the PostgreSQL connection.");
   }
 
-  return new PrismaClient({
-    accelerateUrl,
-  }).$extends(withAccelerate());
+  const adapter = new PrismaNeon({ connectionString });
+  return new PrismaClient({ adapter });
 }
 
 const prisma = globalForPrisma.prisma ?? makePrismaClient();
