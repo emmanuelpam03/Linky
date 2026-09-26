@@ -51,8 +51,21 @@ export async function sendFriendRequest(
     await prisma.friendRequest.delete({ where: { id: existing.id } });
   }
 
-  const request = await prisma.friendRequest.create({
-    data: { senderId, receiverId },
+  const request = await prisma.$transaction(async (transaction) => {
+    const createdRequest = await transaction.friendRequest.create({
+      data: { senderId, receiverId },
+    });
+    await transaction.notification.create({
+      data: {
+        recipientId: receiverId,
+        actorId: senderId,
+        type: "FRIEND_REQUEST",
+        title: "New friend request",
+        body: `${session.user.name} sent you a friend request.`,
+        href: "/requests",
+      },
+    });
+    return createdRequest;
   });
 
   return { success: true, data: request };
@@ -84,6 +97,16 @@ export async function acceptFriendRequest(requestId: string) {
         { userId: request.receiverId, friendId: request.senderId },
       ],
       skipDuplicates: true,
+    }),
+    prisma.notification.create({
+      data: {
+        recipientId: request.senderId,
+        actorId: session.user.id,
+        type: "FRIEND_ACCEPTED",
+        title: "Friend request accepted",
+        body: `${session.user.name} accepted your friend request.`,
+        href: "/friends",
+      },
     }),
   ]);
 

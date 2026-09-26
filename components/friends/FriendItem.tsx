@@ -10,9 +10,10 @@ import { getOrCreateDirectConversation } from "@/app/actions/conversations/getOr
 
 type FriendItemProps = {
   friend: Friend;
+  isOnline: boolean;
 };
 
-const FriendItem = ({ friend }: FriendItemProps) => {
+const FriendItem = ({ friend, isOnline }: FriendItemProps) => {
   const { id, name, username } = friend;
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -50,7 +51,11 @@ const FriendItem = ({ friend }: FriendItemProps) => {
           <AvatarFallback className="bg-(--color-brand-50) text-sm font-medium text-(--color-brand-900)">
             {initials}
           </AvatarFallback>
-          <AvatarBadge className="size-2.5 bg-(--color-status-offline) ring-2 ring-(--color-background-primary)" />
+          <AvatarBadge
+            className={`size-2.5 ring-2 ring-(--color-background-primary) ${
+              isOnline ? "bg-green-500" : "bg-(--color-status-offline)"
+            }`}
+          />
         </Avatar>
 
         <div className="min-w-0">

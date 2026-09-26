@@ -219,6 +219,7 @@ export type MessageWithSender = {
   senderId: string;
   deletedFor: string[];
   deletedForEveryone: boolean;
+  pinnedMessage?: { id: string } | null;
   sender: {
     id: string;
     name: string;
@@ -246,6 +247,7 @@ export type MessageItem = {
   deletedForEveryone: boolean;
   deletedForSelf: boolean;
   editedAt?: Date | null;
+  isPinned?: boolean;
   reactions?: { reaction: string; count: number; reactedByUser?: boolean }[];
   replyTo?: { id: string; text: string | null; sender: { id: string; name: string; username: string; image: string | null } } | null;
 };

@@ -15,7 +15,7 @@ const FriendList = () => {
   const [friends, setFriends] = useState<Friend[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
-  const { friendshipRevision } = useAppRealtime();
+  const { friendshipRevision, onlineUsersById } = useAppRealtime();
 
   useEffect(() => {
     let active = true;
@@ -87,7 +87,11 @@ const FriendList = () => {
         ) : (
           <div className="flex flex-col divide-y divide-(--color-border-tertiary) rounded-xl border border-(--color-border-tertiary) bg-(--color-background-primary)">
             {filtered.map((f) => (
-              <FriendItem key={f.id} friend={f} />
+              <FriendItem
+                key={f.id}
+                friend={f}
+                isOnline={Boolean(onlineUsersById[f.id])}
+              />
             ))}
           </div>
         )}

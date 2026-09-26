@@ -9,7 +9,11 @@ import { getConversations } from "@/app/actions/conversations/list";
 import { useAppRealtime } from "@/components/providers/AppRealtimeProvider";
 
 export default function ConversationList() {
-  const { typingByConversation } = useAppRealtime();
+  const {
+    typingByConversation,
+    onlineUsersById,
+    conversationRevision,
+  } = useAppRealtime();
   const [query, setQuery] = useState("");
   const [conversations, setConversations] = useState<ConversationListItem[]>(
     [],
@@ -18,14 +22,19 @@ export default function ConversationList() {
   const [hasError, setHasError] = useState(false);
 
   useEffect(() => {
+    let active = true;
     const load = async () => {
       const result = await getConversations();
+      if (!active) return;
       if (result.success) setConversations(result.data);
       else setHasError(true);
       setIsLoading(false);
     };
-    load();
-  }, []);
+    void load();
+    return () => {
+      active = false;
+    };
+  }, [conversationRevision]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -72,6 +81,10 @@ export default function ConversationList() {
               conversation={conversation}
               typingUsers={Object.values(
                 typingByConversation[conversation.id] ?? {},
+              )}
+              isOtherUserOnline={Boolean(
+                conversation.otherUser &&
+                  onlineUsersById[conversation.otherUser.id],
               )}
             />
           ))

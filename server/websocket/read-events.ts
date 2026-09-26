@@ -4,6 +4,7 @@ import {
   getClientState,
   getConversationClients,
   getConversationMemberIds,
+  getUserClients,
   removeSubscription,
   sendJson,
   type ClientState,
@@ -67,6 +68,12 @@ export async function publishConversationRead(
   });
 
   const memberIds = await getConversationMemberIds(conversationId);
+  for (const userId of memberIds) {
+    for (const recipient of getUserClients(userId)) {
+      sendJson(recipient, { type: "conversation.changed", conversationId });
+    }
+  }
+
   for (const recipient of getConversationClients(conversationId)) {
     const recipientState = getClientState(recipient);
     if (

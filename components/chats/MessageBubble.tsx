@@ -8,8 +8,10 @@ import {
   deleteMessageForEveryone,
   deleteMessageForSelf,
 } from "@/app/actions/messages/delete";
+import { editMessage } from "@/app/actions/messages/edit";
+import { pinMessage, unpinMessage } from "@/app/actions/messages/pins";
 import { addReaction, removeReaction } from "@/app/actions/messages/reactions";
-import { FileDown } from "lucide-react";
+import { FileDown, Pin } from "lucide-react";
 import FilePreviewModal from "./FilePreviewModal";
 import { buildReactionSummary } from "@/lib/message-interactions";
 
@@ -21,6 +23,7 @@ type MessageBubbleProps = {
   onReply?: (message: MessageItem) => void;
   readReceipt?: string;
   onReactionChanged: (messageId: string) => void;
+  onMessageEdited: (messageId: string) => void;
 };
 
 const MessageBubble = ({
@@ -31,6 +34,7 @@ const MessageBubble = ({
   onReply,
   readReceipt,
   onReactionChanged,
+  onMessageEdited,
 }: MessageBubbleProps) => {
   const {
     id,
@@ -50,6 +54,12 @@ const MessageBubble = ({
     y: number;
   } | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isEditingMessage, setIsEditingMessage] = useState(false);
+  const [editText, setEditText] = useState(text ?? "");
+  const [editError, setEditError] = useState("");
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
+  const [isPinning, setIsPinning] = useState(false);
+  const [pinError, setPinError] = useState("");
   const [previewFile, setPreviewFile] = useState<{
     fileUrl: string;
     fileName: string;
@@ -81,7 +91,23 @@ const MessageBubble = ({
     hour12: true,
   }).format(new Date(createdAt));
 
-  const edited = (message as any).editedAt;
+  const edited = message.editedAt;
+  const isPinned = Boolean(
+    message.isPinned && !deletedForEveryone && !deletedForSelf,
+  );
+  const renderMessageText = (value: string) =>
+    value.split(/(@[a-zA-Z0-9._-]+)/g).map((part, index) =>
+      part.startsWith("@") ? (
+        <span
+          key={`${part}-${index}`}
+          className="rounded bg-(--color-background-tertiary)/60 px-0.5"
+        >
+          {part}
+        </span>
+      ) : (
+        part
+      ),
+    );
 
   const [showReactionPicker, setShowReactionPicker] = useState(false);
   const [reactionQuery, setReactionQuery] = useState("");
@@ -181,6 +207,8 @@ const MessageBubble = ({
     e.preventDefault();
     const optionCount =
       (!deletedForSelf && !deletedForEveryone ? 1 : 0) +
+      (!deletedForEveryone ? 1 : 0) +
+      (isOwn && !deletedForEveryone && text ? 1 : 0) +
       (!deletedForEveryone && isOwn ? 1 : 0) +
       (deletedForEveryone ? 1 : 0);
     const menuHeight = Math.max(menuItemHeight, optionCount * menuItemHeight);
@@ -201,6 +229,50 @@ const MessageBubble = ({
       onMessageUpdated(id, { deletedForSelf: true });
     }
     setIsDeleting(false);
+  };
+
+  const handleSaveEdit = async () => {
+    setIsSavingEdit(true);
+    setEditError("");
+    try {
+      const result = await editMessage(id, editText);
+      if (!result.success || !result.data) {
+        setEditError(result.error ?? "Could not save the edit.");
+        return;
+      }
+
+      onMessageUpdated(id, {
+        text: result.data.text,
+        editedAt: result.data.editedAt,
+      });
+      onMessageEdited(id);
+      setIsEditingMessage(false);
+    } catch (error) {
+      console.error("Could not save message edit:", error);
+      setEditError("Could not save the edit. Try again.");
+    } finally {
+      setIsSavingEdit(false);
+    }
+  };
+
+  const handleTogglePin = async () => {
+    setContextMenu(null);
+    setIsPinning(true);
+    setPinError("");
+    try {
+      const result = isPinned ? await unpinMessage(id) : await pinMessage(id);
+      if (!result.success) {
+        setPinError(result.error ?? "Could not update pinned message.");
+        return;
+      }
+      onMessageUpdated(id, { isPinned: !isPinned });
+      onMessageEdited(id);
+    } catch (error) {
+      console.error("Could not update pinned message:", error);
+      setPinError("Could not update pinned message. Try again.");
+    } finally {
+      setIsPinning(false);
+    }
   };
 
   const handleDeleteForEveryone = async () => {
@@ -266,6 +338,13 @@ const MessageBubble = ({
             </span>
           )}
 
+          {isPinned && (
+            <span className="inline-flex items-center gap-1 text-[10px] text-(--color-text-tertiary)">
+              <Pin className="size-3" />
+              Pinned
+            </span>
+          )}
+
           {/* Bubble */}
           <div className={cn("flex items-end gap-1.5", isOwn ? "flex-row-reverse" : "flex-row")}>
             {isDeletedForEveryone ? (
@@ -280,22 +359,65 @@ const MessageBubble = ({
                     <div className="truncate">{message.replyTo.text ?? ""}</div>
                   </div>
                 )}
-                {text && (
-                  <div
-                    className={cn(
-                      "rounded-2xl px-4 py-2 text-sm",
-                      isOwn
-                        ? "rounded-br-sm bg-(--color-brand-400) text-white"
-                        : "rounded-bl-sm bg-(--color-background-secondary) text-(--color-text-primary)",
-                      isDeleting && "opacity-50",
-                    )}
-                  >
-                    {text}
-                    {edited && (
-                      <span className="ml-2 text-xs opacity-70">· edited</span>
-                    )}
-                  </div>
-                )}
+                {text &&
+                  (isEditingMessage ? (
+                    <div className="w-full min-w-56 rounded-xl border border-(--color-border-tertiary) bg-(--color-background-primary) p-2">
+                      <textarea
+                        autoFocus
+                        value={editText}
+                        onChange={(event) => setEditText(event.target.value)}
+                        maxLength={4000}
+                        className="min-h-20 w-full resize-y rounded-md bg-transparent p-2 text-sm text-(--color-text-primary) outline-none"
+                        aria-label="Edit message"
+                      />
+                      {editError && (
+                        <p className="px-2 text-xs text-(--color-coral-500)">
+                          {editError}
+                        </p>
+                      )}
+                      <div className="flex justify-end gap-2 p-1">
+                        <button
+                          type="button"
+                          disabled={isSavingEdit}
+                          onClick={() => {
+                            setIsEditingMessage(false);
+                            setEditError("");
+                          }}
+                          className="rounded-md px-2 py-1 text-xs text-(--color-text-secondary)"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="button"
+                          disabled={isSavingEdit || !editText.trim()}
+                          onClick={handleSaveEdit}
+                          className="rounded-md bg-(--color-brand-400) px-2 py-1 text-xs text-white disabled:opacity-50"
+                        >
+                          {isSavingEdit ? "Saving..." : "Save"}
+                        </button>
+                      </div>
+                      {pinError && (
+                        <p role="alert" className="text-xs text-(--color-coral-500)">
+                          {pinError}
+                        </p>
+                      )}
+                    </div>
+                  ) : (
+                    <div
+                      className={cn(
+                        "rounded-2xl px-4 py-2 text-sm",
+                        isOwn
+                          ? "rounded-br-sm bg-(--color-brand-400) text-white"
+                          : "rounded-bl-sm bg-(--color-background-secondary) text-(--color-text-primary)",
+                        isDeleting && "opacity-50",
+                      )}
+                    >
+                      {renderMessageText(text)}
+                      {edited && (
+                        <span className="ml-2 text-xs opacity-70">· edited</span>
+                      )}
+                    </div>
+                  ))}
                 {(imageUrl ?? fileUrl) && fileName && (
                   <button
                     onClick={() =>
@@ -410,6 +532,30 @@ const MessageBubble = ({
             className="fixed z-50 min-w-40 overflow-hidden rounded-xl border border-(--color-border-tertiary) bg-(--color-background-primary) shadow-lg"
             style={{ top: contextMenu.y, left: contextMenu.x }}
           >
+            {!isDeletedForEveryone && (
+              <button
+                onClick={() => void handleTogglePin()}
+                disabled={isPinning}
+                className="flex w-full items-center gap-2 px-4 py-2.5 text-sm text-(--color-text-primary) hover:bg-(--color-background-secondary) transition-colors disabled:opacity-50"
+              >
+                <Pin className="size-4" />
+                {isPinned ? "Unpin message" : "Pin message"}
+              </button>
+            )}
+            {isOwn && !isDeletedForEveryone && text && (
+              <button
+                onClick={() => {
+                  setEditText(text);
+                  setEditError("");
+                  setIsEditingMessage(true);
+                  setContextMenu(null);
+                }}
+                className="flex w-full items-center px-4 py-2.5 text-sm text-(--color-text-primary) hover:bg-(--color-background-secondary) transition-colors"
+              >
+                Edit message
+              </button>
+            )}
+
             {/* Reply */}
             {!deletedForSelf && !isDeletedForEveryone && (
               <button

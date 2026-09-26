@@ -48,6 +48,35 @@ export async function getConversations(): Promise<{
   });
 
   const conversations = raw as unknown as ConversationWithIncludes[];
+  const readStates = await prisma.conversationMember.findMany({
+    where: {
+      userId,
+      conversationId: { in: conversations.map((conversation) => conversation.id) },
+    },
+    select: { conversationId: true, lastReadAt: true },
+  });
+  const unreadGroups =
+    readStates.length > 0
+      ? await prisma.message.groupBy({
+          by: ["conversationId"],
+          where: {
+            OR: readStates.map(({ conversationId, lastReadAt }) => ({
+              conversationId,
+              senderId: { not: userId },
+              deletedForEveryone: false,
+              NOT: { deletedFor: { has: userId } },
+              ...(lastReadAt ? { createdAt: { gt: lastReadAt } } : {}),
+            })),
+          },
+          _count: { _all: true },
+        })
+      : [];
+  const unreadCountByConversation = new Map(
+    unreadGroups.map((group) => [
+      group.conversationId,
+      group._count._all,
+    ]),
+  );
 
   const data: ConversationListItem[] = conversations.map((c) => {
     const lastMsg = c.messages[0] ?? null;
@@ -74,7 +103,7 @@ export async function getConversations(): Promise<{
           : (c.image ?? null),
       lastMessageAt: c.lastMessageAt,
       lastMessage: lastMessageText,
-      unreadCount: 0,
+      unreadCount: unreadCountByConversation.get(c.id) ?? 0,
       otherUser: otherMember?.user ?? null,
     };
   });

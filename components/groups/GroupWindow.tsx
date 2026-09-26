@@ -1,12 +1,15 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
-import { Users, Loader2, Info } from "lucide-react";
+import { Users, Loader2, Info, Search, Pin } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import type { GroupDetail, MessageItem } from "@/types";
 import { getMessages } from "@/app/actions/messages/list";
 import MessageBubble from "@/components/chats/MessageBubble";
 import MessageComposer from "@/components/chats/MessageComposer";
+import MessageSearchPanel from "@/components/chats/MessageSearchPanel";
+import PinnedMessagesPanel from "@/components/chats/PinnedMessagesPanel";
+import ConversationCallPanel from "@/components/calls/ConversationCallPanel";
 import TypingIndicator from "@/components/chats/TypingIndicator";
 import RealtimeStatusBadge from "@/components/chats/RealtimeStatusBadge";
 import ConversationPresenceLabel from "@/components/chats/ConversationPresenceLabel";
@@ -28,6 +31,8 @@ export default function GroupWindow({ group }: GroupWindowProps) {
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [showSettings, setShowSettings] = useState(false);
+  const [showSearch, setShowSearch] = useState(false);
+  const [showPins, setShowPins] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [groupData, setGroupData] = useState<GroupDetail | null>(group ?? null);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -38,15 +43,20 @@ export default function GroupWindow({ group }: GroupWindowProps) {
     prevGroupIdRef.current = group?.id;
     setGroupData(group ?? null);
     setShowModal(false);
+    setShowSearch(false);
+    setShowPins(false);
   }
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const isAppendRef = useRef(false);
   const prevLengthRef = useRef(0);
+  const pendingSearchScrollRef = useRef<string | null>(null);
 
   const handleRealtimeMessage = useCallback((message: MessageItem) => {
     setMessages((current) => {
-      if (current.some((item) => item.id === message.id)) return current;
+      if (current.some((item) => item.id === message.id)) {
+        return current.map((item) => (item.id === message.id ? message : item));
+      }
       isAppendRef.current = true;
       return [...current, message];
     });
@@ -121,6 +131,20 @@ export default function GroupWindow({ group }: GroupWindowProps) {
     if (isAppendRef.current) {
       isAppendRef.current = false;
       bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    } else if (pendingSearchScrollRef.current) {
+      const messageId = pendingSearchScrollRef.current;
+      pendingSearchScrollRef.current = null;
+      requestAnimationFrame(() => {
+        const target = document.querySelector<HTMLElement>(
+          `[data-message-id="${messageId}"]`,
+        );
+        target?.scrollIntoView({ behavior: "smooth", block: "center" });
+        target?.classList.add("ring-2", "ring-(--color-brand-300)");
+        window.setTimeout(
+          () => target?.classList.remove("ring-2", "ring-(--color-brand-300)"),
+          1800,
+        );
+      });
     }
     prevLengthRef.current = messages.length;
   }, [messages.length]);
@@ -172,6 +196,25 @@ export default function GroupWindow({ group }: GroupWindowProps) {
   ) => {
     setMessages((prev) =>
       prev.map((m) => (m.id === messageId ? { ...m, ...updates } : m)),
+    );
+  };
+
+  const handleSearchSelect = (message: MessageItem) => {
+    const existing = messages.find((current) => current.id === message.id);
+    if (existing) {
+      document
+        .querySelector<HTMLElement>(`[data-message-id="${message.id}"]`)
+        ?.scrollIntoView({ behavior: "smooth", block: "center" });
+      return;
+    }
+
+    pendingSearchScrollRef.current = message.id;
+    isAppendRef.current = false;
+    setMessages((current) =>
+      [...current, message].sort(
+        (a, b) =>
+          new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+      ),
     );
   };
 
@@ -232,6 +275,28 @@ export default function GroupWindow({ group }: GroupWindowProps) {
           <button
             onClick={(e) => {
               e.stopPropagation();
+              setShowSearch((current) => !current);
+              setShowPins(false);
+            }}
+            aria-label="Search message history"
+            className="rounded-lg p-1.5 text-(--color-text-tertiary) hover:bg-(--color-background-secondary) transition-colors"
+          >
+            <Search className="size-5" />
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowPins((current) => !current);
+              setShowSearch(false);
+            }}
+            aria-label="Show pinned messages"
+            className="rounded-lg p-1.5 text-(--color-text-tertiary) hover:bg-(--color-background-secondary) transition-colors"
+          >
+            <Pin className="size-5" />
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
               setShowSettings((s) => !s);
             }}
             className="rounded-lg p-1.5 text-(--color-text-tertiary) hover:bg-(--color-background-secondary) transition-colors"
@@ -239,6 +304,28 @@ export default function GroupWindow({ group }: GroupWindowProps) {
             <Info className="size-5" />
           </button>
         </header>
+
+        <ConversationCallPanel
+          key={group.id}
+          conversationId={group.id}
+          isGroup
+        />
+
+        {showSearch && (
+          <MessageSearchPanel
+            conversationId={group.id}
+            onSelectMessage={handleSearchSelect}
+          />
+        )}
+        {showPins && (
+          <PinnedMessagesPanel
+            conversationId={group.id}
+            onSelectMessage={(message) => {
+              setShowPins(false);
+              handleSearchSelect(message);
+            }}
+          />
+        )}
 
         <div className="flex flex-1 flex-col overflow-hidden">
           <div
@@ -287,6 +374,7 @@ export default function GroupWindow({ group }: GroupWindowProps) {
                           conversationType="GROUP"
                           onMessageUpdated={handleMessageUpdated}
                           onReactionChanged={publishReaction}
+                          onMessageEdited={publishMessage}
                           readReceipt={
                             getReadReceiptLabel(
                               message,
@@ -310,6 +398,7 @@ export default function GroupWindow({ group }: GroupWindowProps) {
             conversationId={group.id}
             onMessageSent={handleMessageSent}
             onTypingChange={publishTyping}
+            mentionUsers={groupData?.members.map((member) => member.user) ?? []}
           />
         </div>
       </div>

@@ -7,10 +7,13 @@ import { auth } from "../lib/auth";
 import prisma from "../lib/prisma";
 import { handleClientMessage } from "./websocket/client-events";
 import {
+  getUserClients,
   sendJson,
   setClientState,
 } from "./websocket/connection-state";
 import { removeClient } from "./websocket/presence-events";
+import { broadcastUserPresenceToFriends } from "./websocket/user-presence-events";
+import { removeSocketFromCalls } from "./websocket/call-events";
 
 const port = Number(process.env.WS_PORT ?? 3001);
 const appUrl = process.env.NEXT_PUBLIC_APP_URL;
@@ -84,6 +87,13 @@ httpServer.on("upgrade", (request, socket, head) => {
           subscriptions: new Set(),
           lastTypingUpdate: new Map(),
         });
+        if (getUserClients(user.userId).size === 1) {
+          void broadcastUserPresenceToFriends(user.userId, user.name).catch(
+            (error: unknown) => {
+              console.error("Could not broadcast WebSocket user presence:", error);
+            },
+          );
+        }
         webSocketServer.emit("connection", client, request);
       });
     })
@@ -107,6 +117,7 @@ webSocketServer.on("connection", (socket) => {
   });
 
   socket.on("close", () => {
+    removeSocketFromCalls(socket);
     void removeClient(socket).catch((error: unknown) => {
       console.error("Failed to remove a disconnected WebSocket client:", error);
     });

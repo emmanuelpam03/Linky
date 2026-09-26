@@ -57,6 +57,16 @@ export type MessageReactionSummary = {
   reactedByUser: boolean;
 };
 
+export type CallParticipant = { userId: string; name: string };
+export type CallSignal =
+  | { kind: "description"; sdp: string; descriptionType: "offer" | "answer" }
+  | {
+      kind: "candidate";
+      candidate: string;
+      sdpMid: string | null;
+      sdpMLineIndex: number | null;
+    };
+
 export type ConversationServerEvent =
   | { type: "ready" }
   | { type: "subscribed"; conversationId: string }
@@ -74,6 +84,17 @@ export type ConversationServerEvent =
       name: string;
       isTyping: boolean;
     }
+  | {
+      type: "user.presence.snapshot";
+      users: PresenceUser[];
+    }
+  | {
+      type: "user.presence.updated";
+      userId: string;
+      name: string;
+      isOnline: boolean;
+    }
+  | { type: "conversation.changed"; conversationId: string }
   | PresenceEvent
   | ReadReceiptEvent
   | { type: "read.published"; conversationId: string }
@@ -95,6 +116,42 @@ export type ConversationServerEvent =
       type: "friend.request.published";
       requestId: string;
       status: "PENDING" | "ACCEPTED";
+    }
+  | {
+      type: "call.invited";
+      conversationId: string;
+      hostUserId: string;
+      hostName: string;
+      mediaType: "audio" | "video";
+    }
+  | {
+      type: "call.status";
+      conversationId: string;
+      active: false;
+    }
+  | {
+      type: "call.status";
+      conversationId: string;
+      active: true;
+      mediaType: "audio" | "video";
+      hostUserId: string;
+      hostName: string;
+      selfUserId: string;
+      selfJoined: boolean;
+      participants: CallParticipant[];
+    }
+  | {
+      type: "call.peer.joined";
+      conversationId: string;
+      userId: string;
+      name: string;
+    }
+  | { type: "call.peer.left"; conversationId: string; userId: string }
+  | {
+      type: "call.signal";
+      conversationId: string;
+      fromUserId: string;
+      signal: CallSignal;
     }
   | { type: "error"; code: string; messageId?: string; requestId?: string };
 
@@ -130,6 +187,31 @@ function isPresenceUser(value: unknown): value is PresenceUser {
     isRecord(value) &&
     typeof value.userId === "string" &&
     typeof value.name === "string"
+  );
+}
+
+function isCallParticipant(value: unknown): value is CallParticipant {
+  return (
+    isRecord(value) &&
+    typeof value.userId === "string" &&
+    typeof value.name === "string"
+  );
+}
+
+function isCallSignal(value: unknown): value is CallSignal {
+  if (!isRecord(value)) return false;
+  if (value.kind === "description") {
+    return (
+      typeof value.sdp === "string" &&
+      (value.descriptionType === "offer" || value.descriptionType === "answer")
+    );
+  }
+  return (
+    value.kind === "candidate" &&
+    typeof value.candidate === "string" &&
+    (typeof value.sdpMid === "string" || value.sdpMid === null) &&
+    (typeof value.sdpMLineIndex === "number" ||
+      value.sdpMLineIndex === null)
   );
 }
 
@@ -216,6 +298,25 @@ export function parseConversationServerEvent(
             name: value.name,
             isTyping: value.isTyping,
           }
+        : null;
+    case "user.presence.snapshot":
+      return Array.isArray(value.users) && value.users.every(isPresenceUser)
+        ? { type: value.type, users: value.users }
+        : null;
+    case "user.presence.updated":
+      return typeof value.userId === "string" &&
+        typeof value.name === "string" &&
+        typeof value.isOnline === "boolean"
+        ? {
+            type: value.type,
+            userId: value.userId,
+            name: value.name,
+            isOnline: value.isOnline,
+          }
+        : null;
+    case "conversation.changed":
+      return typeof value.conversationId === "string"
+        ? { type: value.type, conversationId: value.conversationId }
         : null;
     case "presence.snapshot":
       return typeof value.conversationId === "string" &&
@@ -306,6 +407,80 @@ export function parseConversationServerEvent(
             type: value.type,
             requestId: value.requestId,
             status: value.status,
+          }
+        : null;
+    case "call.invited":
+      return typeof value.conversationId === "string" &&
+        typeof value.hostUserId === "string" &&
+        typeof value.hostName === "string" &&
+        typeof value.hostName === "string" &&
+        (value.mediaType === "audio" || value.mediaType === "video")
+        ? {
+            type: value.type,
+            conversationId: value.conversationId,
+            hostUserId: value.hostUserId,
+            hostName: value.hostName,
+            mediaType: value.mediaType,
+          }
+        : null;
+    case "call.status":
+      if (typeof value.conversationId !== "string") return null;
+      if (value.active === false) {
+        return {
+          type: value.type,
+          conversationId: value.conversationId,
+          active: false,
+        };
+      }
+      return value.active === true &&
+        (value.mediaType === "audio" || value.mediaType === "video") &&
+        typeof value.hostUserId === "string" &&
+        typeof value.hostName === "string" &&
+        typeof value.selfUserId === "string" &&
+        typeof value.selfJoined === "boolean" &&
+        Array.isArray(value.participants) &&
+        value.participants.every(isCallParticipant)
+        ? {
+            type: value.type,
+            conversationId: value.conversationId,
+            active: true,
+            mediaType: value.mediaType,
+            hostUserId: value.hostUserId,
+            hostName: value.hostName,
+            selfUserId: value.selfUserId,
+            selfJoined: value.selfJoined,
+            participants: value.participants,
+          }
+        : null;
+    case "call.peer.joined":
+      return typeof value.conversationId === "string" &&
+        typeof value.userId === "string" &&
+        typeof value.name === "string"
+        ? {
+            type: value.type,
+            conversationId: value.conversationId,
+            userId: value.userId,
+            name: value.name,
+          }
+        : null;
+    case "call.peer.left":
+      return typeof value.conversationId === "string" &&
+        typeof value.userId === "string"
+        ? {
+            type: value.type,
+            conversationId: value.conversationId,
+            userId: value.userId,
+          }
+        : null;
+    case "call.signal":
+      return typeof value.conversationId === "string" &&
+        typeof value.fromUserId === "string" &&
+        isCallSignal(value.signal)
+        ? {
+            type: value.type,
+            conversationId: value.conversationId,
+            fromUserId: value.fromUserId,
+            signal: value.signal,
           }
         : null;
     case "error":

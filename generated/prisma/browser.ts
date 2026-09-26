@@ -72,3 +72,13 @@ export type Message = Prisma.MessageModel
  * 
  */
 export type MessageReaction = Prisma.MessageReactionModel
+/**
+ * Model Notification
+ * 
+ */
+export type Notification = Prisma.NotificationModel
+/**
+ * Model PinnedMessage
+ * 
+ */
+export type PinnedMessage = Prisma.PinnedMessageModel

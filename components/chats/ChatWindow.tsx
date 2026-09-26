@@ -7,17 +7,20 @@ import {
   useState,
   useCallback,
 } from "react";
-import { MessageCircle, Users, Loader2, Info } from "lucide-react";
+import { MessageCircle, Users, Loader2, Info, Search, Pin } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import type { ConversationDetail, MessageItem } from "@/types";
 import { getMessages } from "@/app/actions/messages/list";
 import MessageBubble from "./MessageBubble";
 import MessageComposer from "./MessageComposer";
+import MessageSearchPanel from "./MessageSearchPanel";
+import PinnedMessagesPanel from "./PinnedMessagesPanel";
 import TypingIndicator from "./TypingIndicator";
 import RealtimeStatusBadge from "./RealtimeStatusBadge";
 import ConversationPresenceLabel from "./ConversationPresenceLabel";
 import ChatSettingsPanel from "./ChatSettingsPanel";
 import GroupSettingsPanel from "@/components/groups/GroupSettingsPanel";
+import ConversationCallPanel from "@/components/calls/ConversationCallPanel";
 import { getGroup } from "@/app/actions/groups/get";
 import type { GroupDetail } from "@/types";
 import ChatInfoModal from "./ChatInfoModal";
@@ -40,6 +43,8 @@ export default function ChatWindow({ conversation }: ChatWindowProps) {
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [showSettings, setShowSettings] = useState(false);
+  const [showSearch, setShowSearch] = useState(false);
+  const [showPins, setShowPins] = useState(false);
   const [groupDetail, setGroupDetail] = useState<GroupDetail | null>(null);
   const [isLoadingGroup, setIsLoadingGroup] = useState(false);
   const [showModal, setShowModal] = useState(false);
@@ -51,6 +56,7 @@ export default function ChatWindow({ conversation }: ChatWindowProps) {
   const lastConversationId = useRef<string | undefined>(conversation?.id);
   const messagesRef = useRef<MessageItem[]>([]);
   const nextCursorRef = useRef<string | null>(null);
+  const pendingSearchScrollRef = useRef<string | null>(null);
   const { toast } = useToast();
   const activeConversationId = conversation?.id;
 
@@ -60,7 +66,9 @@ export default function ChatWindow({ conversation }: ChatWindowProps) {
 
       setMessages((currentMessages) =>
         currentMessages.some((current) => current.id === message.id)
-          ? currentMessages
+          ? currentMessages.map((current) =>
+              current.id === message.id ? message : current,
+            )
           : [...currentMessages, message],
       );
       requestAnimationFrame(() =>
@@ -99,6 +107,8 @@ export default function ChatWindow({ conversation }: ChatWindowProps) {
       lastConversationId.current = conversation?.id;
       setGroupDetail(null);
       setShowSettings(false);
+      setShowSearch(false);
+      setShowPins(false);
       setShowModal(false);
       setIsLoadingGroup(false);
     }
@@ -147,6 +157,22 @@ export default function ChatWindow({ conversation }: ChatWindowProps) {
   }, [nextCursor]);
 
   useEffect(() => {
+    const pendingMessageId = pendingSearchScrollRef.current;
+    if (pendingMessageId) {
+      pendingSearchScrollRef.current = null;
+      requestAnimationFrame(() => {
+        const target = document.querySelector<HTMLElement>(
+          `[data-message-id="${pendingMessageId}"]`,
+        );
+        target?.scrollIntoView({ behavior: "smooth", block: "center" });
+        target?.classList.add("ring-2", "ring-(--color-brand-300)");
+        window.setTimeout(
+          () => target?.classList.remove("ring-2", "ring-(--color-brand-300)"),
+          1800,
+        );
+      });
+      return;
+    }
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages.length]);
 
@@ -208,6 +234,21 @@ export default function ChatWindow({ conversation }: ChatWindowProps) {
   ) => {
     setMessages((prev) =>
       prev.map((m) => (m.id === messageId ? { ...m, ...updates } : m)),
+    );
+  };
+
+  const handleSearchSelect = (message: MessageItem) => {
+    if (messagesRef.current.some((current) => current.id === message.id)) {
+      scrollToMessage(message.id);
+      return;
+    }
+
+    pendingSearchScrollRef.current = message.id;
+    setMessages((current) =>
+      [...current, message].sort(
+        (a, b) =>
+          new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+      ),
     );
   };
 
@@ -378,6 +419,28 @@ export default function ChatWindow({ conversation }: ChatWindowProps) {
           <button
             onClick={(e) => {
               e.stopPropagation();
+              setShowSearch((current) => !current);
+              setShowPins(false);
+            }}
+            aria-label="Search message history"
+            className="rounded-lg p-1.5 text-(--color-text-tertiary) hover:bg-(--color-background-secondary) transition-colors"
+          >
+            <Search className="size-5" />
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowPins((current) => !current);
+              setShowSearch(false);
+            }}
+            aria-label="Show pinned messages"
+            className="rounded-lg p-1.5 text-(--color-text-tertiary) hover:bg-(--color-background-secondary) transition-colors"
+          >
+            <Pin className="size-5" />
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
               handleToggleSettings();
             }}
             disabled={isLoadingGroup}
@@ -390,6 +453,30 @@ export default function ChatWindow({ conversation }: ChatWindowProps) {
             )}
           </button>
         </header>
+
+        {conversation.type === "DIRECT" && (
+          <ConversationCallPanel
+            key={conversation.id}
+            conversationId={conversation.id}
+            isGroup={false}
+          />
+        )}
+
+        {showSearch && (
+          <MessageSearchPanel
+            conversationId={conversation.id}
+            onSelectMessage={handleSearchSelect}
+          />
+        )}
+        {showPins && (
+          <PinnedMessagesPanel
+            conversationId={conversation.id}
+            onSelectMessage={(message) => {
+              setShowPins(false);
+              handleSearchSelect(message);
+            }}
+          />
+        )}
 
         <div className="flex flex-1 flex-col overflow-hidden">
           <div
@@ -438,6 +525,7 @@ export default function ChatWindow({ conversation }: ChatWindowProps) {
                             conversationType={conversation.type}
                             onMessageUpdated={handleMessageUpdated}
                             onReactionChanged={publishReaction}
+                            onMessageEdited={publishMessage}
                             readReceipt={
                               getReadReceiptLabel(
                                 message,
@@ -468,6 +556,13 @@ export default function ChatWindow({ conversation }: ChatWindowProps) {
             conversationId={conversation.id}
             onMessageSent={handleMessageSent}
             onTypingChange={publishTyping}
+            mentionUsers={
+              conversation.type === "DIRECT"
+                ? conversation.otherUser
+                  ? [conversation.otherUser]
+                  : []
+                : (groupDetail?.members.map((member) => member.user) ?? [])
+            }
             replyTo={replyTo}
             onCancelReply={() => setReplyTo(null)}
           />

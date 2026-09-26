@@ -32,3 +32,13 @@ export const MemberRole = {
 } as const
 
 export type MemberRole = (typeof MemberRole)[keyof typeof MemberRole]
+
+
+export const NotificationType = {
+  FRIEND_REQUEST: 'FRIEND_REQUEST',
+  FRIEND_ACCEPTED: 'FRIEND_ACCEPTED',
+  MENTION: 'MENTION',
+  CALL_INVITE: 'CALL_INVITE'
+} as const
+
+export type NotificationType = (typeof NotificationType)[keyof typeof NotificationType]

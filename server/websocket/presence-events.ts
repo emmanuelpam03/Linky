@@ -5,11 +5,13 @@ import {
   getClientState,
   getConversationClients,
   getConversationMemberIds,
+  getUserClients,
   removeSubscription,
   sendJson,
   type ClientState,
 } from "./connection-state";
 import { sendReadSnapshot } from "./read-events";
+import { broadcastUserPresenceToFriends } from "./user-presence-events";
 
 async function broadcastPresenceUpdate(
   conversationId: string,
@@ -119,6 +121,9 @@ export async function removeClient(socket: WebSocket) {
     ),
   );
   clearClientState(socket);
+  if (getUserClients(state.userId).size === 0) {
+    await broadcastUserPresenceToFriends(state.userId, state.name);
+  }
 
   for (const result of results) {
     if (result.status === "rejected") {

@@ -6,6 +6,7 @@ import {
   getClientState,
   getConversationClients,
   getConversationMemberIds,
+  getUserClients,
   sendJson,
   type ClientState,
 } from "./connection-state";
@@ -59,6 +60,7 @@ export async function publishMessage(
           userId: true,
         },
       },
+      pinnedMessage: { select: { id: true } },
     },
   });
 
@@ -110,6 +112,7 @@ export async function publishMessage(
       deletedForEveryone: message.deletedForEveryone,
       deletedForSelf: message.deletedFor.includes(recipientState.userId),
       editedAt: message.editedAt,
+      isPinned: Boolean(message.pinnedMessage),
       reactions: buildReactionSummary(message.reactions, recipientState.userId),
       replyTo: message.replyTo,
     };
@@ -119,6 +122,15 @@ export async function publishMessage(
       conversationId: message.conversationId,
       message: messageItem,
     });
+  }
+
+  for (const userId of memberIds) {
+    for (const recipient of getUserClients(userId)) {
+      sendJson(recipient, {
+        type: "conversation.changed",
+        conversationId: message.conversationId,
+      });
+    }
   }
 
   sendJson(socket, { type: "message.published", messageId });

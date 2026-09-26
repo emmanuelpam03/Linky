@@ -18,6 +18,7 @@ type MessageComposerProps = {
   onTypingChange?: (conversationId: string, isTyping: boolean) => void;
   replyTo?: MessageItem | null;
   onCancelReply?: () => void;
+  mentionUsers?: { name: string; username: string }[];
 };
 
 const MessageComposer = ({
@@ -26,12 +27,14 @@ const MessageComposer = ({
   onTypingChange = ignoreTypingChange,
   replyTo = null,
   onCancelReply,
+  mentionUsers = [],
 }: MessageComposerProps) => {
   const [text, setText] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isUploadingFile, setIsUploadingFile] = useState(false);
+  const [mentionQuery, setMentionQuery] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const isSubmittingRef = useRef(false);
   const { updateTyping, stopTyping } = useTypingNotifications(
@@ -135,7 +138,30 @@ const MessageComposer = ({
     }
   };
 
+  const mentionMatches =
+    mentionQuery === null
+      ? []
+      : mentionUsers
+          .filter((user) =>
+            user.username.toLowerCase().startsWith(mentionQuery.toLowerCase()),
+          )
+          .slice(0, 6);
+
+  const selectMention = (username: string) => {
+    const match = text.match(/@([a-zA-Z0-9._-]*)$/);
+    if (!match) return;
+    const nextText =
+      text.slice(0, text.length - match[0].length) + `@${username} `;
+    setText(nextText);
+    updateTyping(nextText);
+    setMentionQuery(null);
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Escape" && mentionQuery !== null) {
+      setMentionQuery(null);
+      return;
+    }
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSend();
@@ -169,6 +195,26 @@ const MessageComposer = ({
           <div className="mt-1 truncate text-sm">{replyTo.text}</div>
         </div>
       )}
+      {mentionMatches.length > 0 && (
+        <div className="mb-2 max-h-40 overflow-y-auto rounded-lg border border-(--color-border-tertiary) bg-(--color-background-primary) shadow-lg">
+          {mentionMatches.map((user) => (
+            <button
+              key={user.username}
+              type="button"
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={() => selectMention(user.username)}
+              className="flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-(--color-background-secondary)"
+            >
+              <span className="text-sm text-(--color-text-primary)">
+                {user.name}
+              </span>
+              <span className="text-xs text-(--color-text-tertiary)">
+                @{user.username}
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
       <div className="flex items-center gap-2 rounded-xl border border-(--color-border-secondary) bg-(--color-background-primary) px-4 py-2">
         <input
           ref={fileInputRef}
@@ -192,6 +238,8 @@ const MessageComposer = ({
           onChange={(e) => {
             setText(e.target.value);
             updateTyping(e.target.value);
+            const match = e.target.value.match(/@([a-zA-Z0-9._-]*)$/);
+            setMentionQuery(match ? match[1] : null);
             if (error) setError(null);
           }}
           onBlur={stopTyping}

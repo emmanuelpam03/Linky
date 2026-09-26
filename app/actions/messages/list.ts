@@ -61,6 +61,7 @@ export async function getMessages(
           image: true,
         },
       },
+      pinnedMessage: { select: { id: true } },
     },
     orderBy: { createdAt: "desc" }, // fetch newest first
     take: PAGE_SIZE + 1, // fetch one extra to know if there's a next page
@@ -142,6 +143,7 @@ export async function getMessages(
       id: m.id,
       text: m.text,
       editedAt: (m as any).editedAt ?? null,
+      isPinned: Boolean(m.pinnedMessage),
       imageUrl: m.imageUrl,
       fileUrl: m.fileUrl,
       fileName: m.fileName,

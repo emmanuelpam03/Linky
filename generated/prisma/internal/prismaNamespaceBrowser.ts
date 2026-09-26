@@ -61,7 +61,9 @@ export const ModelName = {
   Conversation: 'Conversation',
   ConversationMember: 'ConversationMember',
   Message: 'Message',
-  MessageReaction: 'MessageReaction'
+  MessageReaction: 'MessageReaction',
+  Notification: 'Notification',
+  PinnedMessage: 'PinnedMessage'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -232,6 +234,32 @@ export const MessageReactionScalarFieldEnum = {
 } as const
 
 export type MessageReactionScalarFieldEnum = (typeof MessageReactionScalarFieldEnum)[keyof typeof MessageReactionScalarFieldEnum]
+
+
+export const NotificationScalarFieldEnum = {
+  id: 'id',
+  recipientId: 'recipientId',
+  actorId: 'actorId',
+  type: 'type',
+  title: 'title',
+  body: 'body',
+  href: 'href',
+  createdAt: 'createdAt',
+  readAt: 'readAt'
+} as const
+
+export type NotificationScalarFieldEnum = (typeof NotificationScalarFieldEnum)[keyof typeof NotificationScalarFieldEnum]
+
+
+export const PinnedMessageScalarFieldEnum = {
+  id: 'id',
+  conversationId: 'conversationId',
+  messageId: 'messageId',
+  pinnedById: 'pinnedById',
+  createdAt: 'createdAt'
+} as const
+
+export type PinnedMessageScalarFieldEnum = (typeof PinnedMessageScalarFieldEnum)[keyof typeof PinnedMessageScalarFieldEnum]
 
 
 export const SortOrder = {

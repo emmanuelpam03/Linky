@@ -137,43 +137,88 @@ export async function sendMessage({
     return { success: false, error: "Message must have text or a file" };
   }
 
-  const raw = await prisma.message.create({
-    data: {
-      conversationId,
-      senderId: userId,
-      text: trimmedText || null,
-      replyToId: replyToId ?? null,
-      imageUrl: attachment?.imageUrl || null,
-      fileUrl: attachment?.fileUrl || null,
-      fileName: attachment?.fileName || null,
-      fileSize: attachment?.fileSize ?? null,
-    },
-    select: {
-      id: true,
-      text: true,
-      imageUrl: true,
-      fileUrl: true,
-      fileName: true,
-      fileSize: true,
-      createdAt: true,
-      senderId: true,
-      deletedForEveryone: true,
-      deletedFor: true,
-      replyToId: true,
-      sender: {
-        select: {
-          id: true,
-          name: true,
-          username: true,
-          image: true,
+  const mentionedUsernames = Array.from(
+    trimmedText.matchAll(/@([a-zA-Z0-9._-]{1,30})/g),
+    (match) => match[1].toLowerCase(),
+  );
+  const mentionedUsers = mentionedUsernames.length
+    ? await prisma.user.findMany({
+        where: {
+          id: { not: userId },
+          conversationMembers: { some: { conversationId } },
+          OR: mentionedUsernames.map((username) => ({
+            username: { equals: username, mode: "insensitive" as const },
+          })),
         },
-      },
-    },
+        select: { id: true, username: true },
+      })
+    : [];
+  const mentionedIds = new Set(mentionedUsers.map((user) => user.id));
+  const uniqueMentionedUsers = mentionedUsers.filter((user) => {
+    if (!mentionedIds.has(user.id)) return false;
+    mentionedIds.delete(user.id);
+    return true;
   });
 
-  await prisma.conversation.update({
-    where: { id: conversationId },
-    data: { lastMessageAt: raw.createdAt },
+  const raw = await prisma.$transaction(async (transaction) => {
+    const createdMessage = await transaction.message.create({
+      data: {
+        conversationId,
+        senderId: userId,
+        text: trimmedText || null,
+        replyToId: replyToId ?? null,
+        imageUrl: attachment?.imageUrl || null,
+        fileUrl: attachment?.fileUrl || null,
+        fileName: attachment?.fileName || null,
+        fileSize: attachment?.fileSize ?? null,
+      },
+      select: {
+        id: true,
+        text: true,
+        imageUrl: true,
+        fileUrl: true,
+        fileName: true,
+        fileSize: true,
+        createdAt: true,
+        senderId: true,
+        deletedForEveryone: true,
+        deletedFor: true,
+        replyToId: true,
+        sender: {
+          select: {
+            id: true,
+            name: true,
+            username: true,
+            image: true,
+          },
+        },
+      },
+    });
+
+    await transaction.conversation.update({
+      where: { id: conversationId },
+      data: { lastMessageAt: createdMessage.createdAt },
+    });
+
+    if (uniqueMentionedUsers.length) {
+      const location =
+        conversation?.type === "GROUP" ? conversation.name ?? "a group" : "a chat";
+      await transaction.notification.createMany({
+        data: uniqueMentionedUsers.map((user) => ({
+          recipientId: user.id,
+          actorId: userId,
+          type: "MENTION",
+          title: "You were mentioned",
+          body: `${session.user.name} mentioned @${user.username} in ${location}.`,
+          href:
+            conversation?.type === "GROUP"
+              ? `/groups/${conversationId}`
+              : `/chats/${conversationId}`,
+        })),
+      });
+    }
+
+    return createdMessage;
   });
 
   return {

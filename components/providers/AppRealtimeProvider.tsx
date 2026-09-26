@@ -19,8 +19,12 @@ type PendingFriendUpdate = {
 
 type AppRealtimeContextValue = {
   typingByConversation: Record<string, Record<string, string>>;
+  onlineUsersById: Record<string, string>;
+  conversationRevision: number;
+  notificationRevision: number;
   friendRequestRevision: number;
   friendshipRevision: number;
+  refreshNotifications: () => void;
   publishFriendRequestUpdate: (
     requestId: string,
     status: FriendRequestStatus,
@@ -33,6 +37,11 @@ export function AppRealtimeProvider({ children }: { children: ReactNode }) {
   const [typingByConversation, setTypingByConversation] = useState<
     Record<string, Record<string, string>>
   >({});
+  const [onlineUsersById, setOnlineUsersById] = useState<
+    Record<string, string>
+  >({});
+  const [conversationRevision, setConversationRevision] = useState(0);
+  const [notificationRevision, setNotificationRevision] = useState(0);
   const [friendRequestRevision, setFriendRequestRevision] = useState(0);
   const [friendshipRevision, setFriendshipRevision] = useState(0);
   const pendingFriendUpdatesRef = useRef(new Map<string, PendingFriendUpdate>());
@@ -132,7 +141,33 @@ export function AppRealtimeProvider({ children }: { children: ReactNode }) {
 
         if (serverEvent.type === "ready") {
           retryCount = 0;
+          currentSocket.send(JSON.stringify({ type: "user.subscribe" }));
           flushPending();
+          return;
+        }
+
+        if (serverEvent.type === "user.presence.snapshot") {
+          setOnlineUsersById(
+            Object.fromEntries(
+              serverEvent.users.map((user) => [user.userId, user.name]),
+            ),
+          );
+          return;
+        }
+
+        if (serverEvent.type === "user.presence.updated") {
+          setOnlineUsersById((current) => {
+            const next = { ...current };
+            if (serverEvent.isOnline) next[serverEvent.userId] = serverEvent.name;
+            else delete next[serverEvent.userId];
+            return next;
+          });
+          return;
+        }
+
+        if (serverEvent.type === "conversation.changed") {
+          setConversationRevision((revision) => revision + 1);
+          setNotificationRevision((revision) => revision + 1);
           return;
         }
 
@@ -171,9 +206,15 @@ export function AppRealtimeProvider({ children }: { children: ReactNode }) {
 
         if (serverEvent.type === "friend.request.updated") {
           setFriendRequestRevision((revision) => revision + 1);
+          setNotificationRevision((revision) => revision + 1);
           if (serverEvent.status === "ACCEPTED") {
             setFriendshipRevision((revision) => revision + 1);
           }
+          return;
+        }
+
+        if (serverEvent.type === "call.invited") {
+          setNotificationRevision((revision) => revision + 1);
           return;
         }
 
@@ -199,6 +240,7 @@ export function AppRealtimeProvider({ children }: { children: ReactNode }) {
 
       currentSocket.addEventListener("close", () => {
         if (socket === currentSocket) socket = null;
+        setOnlineUsersById({});
         sentFriendUpdates.clear();
         scheduleReconnect();
       });
@@ -229,13 +271,20 @@ export function AppRealtimeProvider({ children }: { children: ReactNode }) {
     },
     [],
   );
+  const refreshNotifications = useCallback(() => {
+    setNotificationRevision((revision) => revision + 1);
+  }, []);
 
   return (
     <AppRealtimeContext.Provider
       value={{
         typingByConversation,
+        onlineUsersById,
+        conversationRevision,
+        notificationRevision,
         friendRequestRevision,
         friendshipRevision,
+        refreshNotifications,
         publishFriendRequestUpdate,
       }}
     >

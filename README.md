@@ -49,3 +49,22 @@ The local environment should set `NEXT_PUBLIC_WS_URL="ws://localhost:3001"` and
 authenticated WebSocket connection is ready. Direct and group conversations
 deliver new messages, show typing indicators, and display presence for members
 currently connected to that conversation.
+
+## Messaging features
+
+Apply database changes before starting the app:
+
+```bash
+pnpm exec prisma migrate deploy
+```
+
+Chats include unread counts, message editing, history search, pinned messages,
+and `@username` mentions. Friend requests, mentions, and call invitations
+appear in the in-app Alerts page. Use a message's context menu to edit or pin it.
+
+Direct voice and video calls are available between friends; group calls use
+peer-to-peer WebRTC mesh and support up to six participants. Browsers must allow
+microphone/camera access. STUN is configured by default; networks that block
+direct connections may require a TURN service.
+Set the server-only `TURN_URL`, `TURN_USERNAME`, and `TURN_CREDENTIAL` values
+from `.env.example` when one is available.

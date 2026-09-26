@@ -3,18 +3,25 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Users } from "lucide-react";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+  Avatar,
+  AvatarBadge,
+  AvatarFallback,
+  AvatarImage,
+} from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import type { ConversationListItem } from "@/types";
 
 type ConversationItemProps = {
   conversation: ConversationListItem;
   typingUsers?: string[];
+  isOtherUserOnline?: boolean;
 };
 
 export default function ConversationItem({
   conversation,
   typingUsers = [],
+  isOtherUserOnline = false,
 }: ConversationItemProps) {
   const pathname = usePathname();
   const href = `/chats/${conversation.id}`;
@@ -66,6 +73,16 @@ export default function ConversationItem({
         >
           {conversation.type === "GROUP" ? <Users size={18} /> : initials}
         </AvatarFallback>
+        {conversation.type === "DIRECT" && (
+          <AvatarBadge
+            className={cn(
+              "size-2.5 ring-2 ring-(--color-background-primary)",
+              isOtherUserOnline
+                ? "bg-green-500"
+                : "bg-(--color-status-offline)",
+            )}
+          />
+        )}
       </Avatar>
 
       <div className="min-w-0 flex-1">
