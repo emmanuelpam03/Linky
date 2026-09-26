@@ -9,6 +9,7 @@ import {
   sendJson,
   type ClientState,
 } from "./connection-state";
+import { sendReadSnapshot } from "./read-events";
 
 async function broadcastPresenceUpdate(
   conversationId: string,
@@ -71,6 +72,7 @@ export async function subscribeToConversation(
     conversationId,
     users: [...onlineUsers].map(([userId, name]) => ({ userId, name })),
   });
+  await sendReadSnapshot(socket, state, conversationId);
 
   if (!wasOnline) {
     await broadcastPresenceUpdate(

@@ -13,6 +13,10 @@ import ConversationPresenceLabel from "@/components/chats/ConversationPresenceLa
 import GroupSettingsPanel from "./GroupSettingsPanel";
 import GroupInfoModal from "./GroupInfoModal";
 import { useConversationRealtime } from "@/lib/use-conversation-realtime";
+import {
+  getLatestOwnMessageId,
+  getReadReceiptLabel,
+} from "@/lib/read-receipts";
 
 type GroupWindowProps = {
   group?: GroupDetail | null;
@@ -51,6 +55,7 @@ export default function GroupWindow({ group }: GroupWindowProps) {
     status: realtimeStatus,
     typingUsers,
     onlineUsers,
+    lastReadAtByUser,
     publishMessage,
     publishTyping,
   } = useConversationRealtime(group?.id, handleRealtimeMessage);
@@ -182,6 +187,7 @@ export default function GroupWindow({ group }: GroupWindowProps) {
     .slice(0, 2)
     .join("")
     .toUpperCase();
+  const latestOwnMessageId = getLatestOwnMessageId(messages);
 
   return (
     <div className="flex h-full overflow-hidden">
@@ -263,7 +269,16 @@ export default function GroupWindow({ group }: GroupWindowProps) {
                           key={message.id}
                           message={message}
                           showAvatar={showAvatar}
+                          conversationType="GROUP"
                           onMessageUpdated={handleMessageUpdated}
+                          readReceipt={
+                            getReadReceiptLabel(
+                              message,
+                              latestOwnMessageId,
+                              "GROUP",
+                              lastReadAtByUser,
+                            ) ?? undefined
+                          }
                         />
                       );
                     })}

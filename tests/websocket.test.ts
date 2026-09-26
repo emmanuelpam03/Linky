@@ -128,3 +128,57 @@ test("parseConversationServerEvent validates presence snapshots and updates", ()
     null,
   );
 });
+
+test("parseConversationServerEvent validates read receipt snapshots and updates", () => {
+  const lastReadAt = "2026-11-26T08:00:00.000Z";
+  assert.deepEqual(
+    parseConversationServerEvent(
+      JSON.stringify({
+        type: "read.snapshot",
+        conversationId: "conversation-1",
+        readers: [
+          { userId: "user-2", name: "Other User", lastReadAt },
+        ],
+      }),
+    ),
+    {
+      type: "read.snapshot",
+      conversationId: "conversation-1",
+      readers: [
+        {
+          userId: "user-2",
+          name: "Other User",
+          lastReadAt: new Date(lastReadAt),
+        },
+      ],
+    },
+  );
+  assert.deepEqual(
+    parseConversationServerEvent(
+      JSON.stringify({
+        type: "read.updated",
+        conversationId: "conversation-1",
+        userId: "user-2",
+        name: "Other User",
+        lastReadAt,
+      }),
+    ),
+    {
+      type: "read.updated",
+      conversationId: "conversation-1",
+      userId: "user-2",
+      name: "Other User",
+      lastReadAt: new Date(lastReadAt),
+    },
+  );
+  assert.equal(
+    parseConversationServerEvent(
+      JSON.stringify({
+        type: "read.snapshot",
+        conversationId: "conversation-1",
+        readers: [{ userId: "user-2", lastReadAt: "invalid" }],
+      }),
+    ),
+    null,
+  );
+});

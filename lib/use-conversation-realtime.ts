@@ -8,6 +8,7 @@ import {
 } from "./websocket";
 import { useConversationTyping } from "./use-conversation-typing";
 import { useConversationPresence } from "./use-conversation-presence";
+import { useConversationReadReceipts } from "./use-conversation-read-receipts";
 
 export function useConversationRealtime(
   conversationId: string | undefined,
@@ -23,6 +24,8 @@ export function useConversationRealtime(
     useConversationTyping(conversationId);
   const { onlineUsers, handlePresenceEvent } =
     useConversationPresence(conversationId);
+  const { lastReadAtByUser, handleReadReceiptEvent } =
+    useConversationReadReceipts(conversationId);
 
   useLayoutEffect(() => {
     activeConversationIdRef.current = conversationId;
@@ -45,6 +48,7 @@ export function useConversationRealtime(
       setStatus,
       handleTypingUpdate,
       handlePresenceEvent,
+      handleReadReceiptEvent,
     );
     socketRef.current = socket;
 
@@ -54,7 +58,12 @@ export function useConversationRealtime(
         socketRef.current = null;
       }
     };
-  }, [conversationId, handleTypingUpdate, handlePresenceEvent]);
+  }, [
+    conversationId,
+    handleTypingUpdate,
+    handlePresenceEvent,
+    handleReadReceiptEvent,
+  ]);
 
   const publishMessage = useCallback((messageId: string) => {
     socketRef.current?.publishMessage(messageId);
@@ -68,11 +77,18 @@ export function useConversationRealtime(
     [],
   );
 
+  const publishRead = useCallback((targetConversationId: string) => {
+    if (activeConversationIdRef.current !== targetConversationId) return;
+    socketRef.current?.publishRead();
+  }, []);
+
   return {
     status,
     typingUsers,
     onlineUsers,
+    lastReadAtByUser,
     publishMessage,
     publishTyping,
+    publishRead,
   };
 }

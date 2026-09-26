@@ -10,6 +10,7 @@ import {
   subscribeToConversation,
   unsubscribeFromConversation,
 } from "./presence-events";
+import { publishConversationRead } from "./read-events";
 import { publishTyping } from "./typing-events";
 
 const clientEventSchema = z.discriminatedUnion("type", [
@@ -36,6 +37,12 @@ const clientEventSchema = z.discriminatedUnion("type", [
       type: z.literal("typing.update"),
       conversationId: z.string().min(1).max(128),
       isTyping: z.boolean(),
+    })
+    .strict(),
+  z
+    .object({
+      type: z.literal("conversation.read"),
+      conversationId: z.string().min(1).max(128),
     })
     .strict(),
 ]);
@@ -96,6 +103,13 @@ export async function handleClientMessage(
         state,
         parsed.data.conversationId,
         parsed.data.isTyping,
+      );
+      break;
+    case "conversation.read":
+      await publishConversationRead(
+        socket,
+        state,
+        parsed.data.conversationId,
       );
       break;
   }

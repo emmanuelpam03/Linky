@@ -25,6 +25,10 @@ import GroupInfoModal from "@/components/groups/GroupInfoModal";
 import { clearChat } from "@/app/actions/conversations/settings";
 import { useToast } from "@/components/ui/toast";
 import { useConversationRealtime } from "@/lib/use-conversation-realtime";
+import {
+  getLatestOwnMessageId,
+  getReadReceiptLabel,
+} from "@/lib/read-receipts";
 
 type ChatWindowProps = {
   conversation?: ConversationDetail | null;
@@ -69,6 +73,7 @@ export default function ChatWindow({ conversation }: ChatWindowProps) {
     status: realtimeStatus,
     typingUsers,
     onlineUsers,
+    lastReadAtByUser,
     publishMessage,
     publishTyping,
   } = useConversationRealtime(activeConversationId, handleRealtimeMessage);
@@ -322,6 +327,7 @@ export default function ChatWindow({ conversation }: ChatWindowProps) {
     .slice(0, 2)
     .join("")
     .toUpperCase();
+  const latestOwnMessageId = getLatestOwnMessageId(messages);
 
   return (
     <div className="flex h-full overflow-hidden">
@@ -416,6 +422,14 @@ export default function ChatWindow({ conversation }: ChatWindowProps) {
                             showAvatar={showAvatar}
                             conversationType={conversation.type}
                             onMessageUpdated={handleMessageUpdated}
+                            readReceipt={
+                              getReadReceiptLabel(
+                                message,
+                                latestOwnMessageId,
+                                conversation.type,
+                                lastReadAtByUser,
+                              ) ?? undefined
+                            }
                             onReply={(m) => {
                               setReplyTo(m);
                               if (m.id) {

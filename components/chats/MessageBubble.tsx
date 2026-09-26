@@ -19,6 +19,7 @@ type MessageBubbleProps = {
   conversationType?: "DIRECT" | "GROUP";
   onMessageUpdated: (messageId: string, updates: Partial<MessageItem>) => void;
   onReply?: (message: MessageItem) => void;
+  readReceipt?: string;
 };
 
 const MessageBubble = ({
@@ -27,6 +28,7 @@ const MessageBubble = ({
   conversationType = "DIRECT",
   onMessageUpdated,
   onReply,
+  readReceipt,
 }: MessageBubbleProps) => {
   const {
     id,
@@ -309,6 +311,14 @@ const MessageBubble = ({
               <span className="mx-1 text-[10px] text-(--color-text-tertiary)">
                 {time}
               </span>
+              {readReceipt && (
+                <span
+                  aria-label={readReceipt}
+                  className="text-[10px] text-(--color-text-tertiary)"
+                >
+                  {readReceipt}
+                </span>
+              )}
 
               {canReact && (
                 <>

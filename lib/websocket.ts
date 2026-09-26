@@ -31,6 +31,26 @@ export type PresenceEvent =
       isOnline: boolean;
     };
 
+export type ReadReceiptUser = {
+  userId: string;
+  name: string;
+  lastReadAt: Date;
+};
+
+export type ReadReceiptEvent =
+  | {
+      type: "read.snapshot";
+      conversationId: string;
+      readers: ReadReceiptUser[];
+    }
+  | {
+      type: "read.updated";
+      conversationId: string;
+      userId: string;
+      name: string;
+      lastReadAt: Date;
+    };
+
 export type ConversationServerEvent =
   | { type: "ready" }
   | { type: "subscribed"; conversationId: string }
@@ -49,6 +69,8 @@ export type ConversationServerEvent =
       isTyping: boolean;
     }
   | PresenceEvent
+  | ReadReceiptEvent
+  | { type: "read.published"; conversationId: string }
   | { type: "error"; code: string; messageId?: string };
 
 type SerializedMessage = Omit<MessageItem, "createdAt"> & {
@@ -84,6 +106,24 @@ function isPresenceUser(value: unknown): value is PresenceUser {
     typeof value.userId === "string" &&
     typeof value.name === "string"
   );
+}
+
+function parseReadReceiptUser(value: unknown): ReadReceiptUser | null {
+  if (
+    !isRecord(value) ||
+    typeof value.userId !== "string" ||
+    typeof value.name !== "string" ||
+    typeof value.lastReadAt !== "string" ||
+    Number.isNaN(Date.parse(value.lastReadAt))
+  ) {
+    return null;
+  }
+
+  return {
+    userId: value.userId,
+    name: value.name,
+    lastReadAt: new Date(value.lastReadAt),
+  };
 }
 
 export function parseConversationServerEvent(
@@ -162,6 +202,36 @@ export function parseConversationServerEvent(
             isOnline: value.isOnline,
           }
         : null;
+    case "read.snapshot": {
+      if (typeof value.conversationId !== "string" || !Array.isArray(value.readers)) {
+        return null;
+      }
+
+      const readers = value.readers
+        .map(parseReadReceiptUser)
+        .filter((reader): reader is ReadReceiptUser => reader !== null);
+      if (readers.length !== value.readers.length) return null;
+
+      return {
+        type: value.type,
+        conversationId: value.conversationId,
+        readers,
+      };
+    }
+    case "read.updated": {
+      const reader = parseReadReceiptUser(value);
+      return typeof value.conversationId === "string" && reader
+        ? {
+            type: value.type,
+            conversationId: value.conversationId,
+            ...reader,
+          }
+        : null;
+    }
+    case "read.published":
+      return typeof value.conversationId === "string"
+        ? { type: value.type, conversationId: value.conversationId }
+        : null;
     case "error":
       if (typeof value.code !== "string") return null;
       return {
@@ -182,6 +252,7 @@ export function connectToConversation(
   onStatus: (status: RealtimeStatus) => void,
   onTyping: (update: TypingUpdate) => void,
   onPresence: (event: PresenceEvent) => void,
+  onReadReceipt: (event: ReadReceiptEvent) => void,
 ) {
   const url = process.env.NEXT_PUBLIC_WS_URL;
   if (!url) {
@@ -190,6 +261,7 @@ export function connectToConversation(
     return {
       publishMessage: () => {},
       publishTyping: () => {},
+      publishRead: () => {},
       close: () => {},
     };
   }
@@ -205,6 +277,7 @@ export function connectToConversation(
     return {
       publishMessage: () => {},
       publishTyping: () => {},
+      publishRead: () => {},
       close: () => {},
     };
   }
@@ -216,6 +289,8 @@ export function connectToConversation(
   let closed = false;
   const pendingMessageIds = new Set<string>();
   const sentMessageIds = new Set<string>();
+  let pendingRead = document.visibilityState === "visible";
+  let sentRead = false;
 
   const flushPendingMessages = () => {
     if (
@@ -224,6 +299,12 @@ export function connectToConversation(
       !subscribed
     ) {
       return;
+    }
+
+    if (pendingRead && !sentRead && document.visibilityState === "visible") {
+      pendingRead = false;
+      sentRead = true;
+      socket.send(JSON.stringify({ type: "conversation.read", conversationId }));
     }
 
     for (const messageId of pendingMessageIds) {
@@ -263,6 +344,7 @@ export function connectToConversation(
 
     const currentSocket = socket;
     currentSocket.addEventListener("open", () => {
+      if (document.visibilityState === "visible") pendingRead = true;
       currentSocket.send(JSON.stringify({ type: "subscribe", conversationId }));
     });
 
@@ -294,6 +376,13 @@ export function connectToConversation(
         serverEvent.conversationId === conversationId
       ) {
         onMessage(serverEvent.message);
+        if (
+          !serverEvent.message.isOwn &&
+          document.visibilityState === "visible"
+        ) {
+          pendingRead = true;
+          flushPendingMessages();
+        }
         return;
       }
 
@@ -315,6 +404,24 @@ export function connectToConversation(
         serverEvent.conversationId === conversationId
       ) {
         onPresence(serverEvent);
+        return;
+      }
+
+      if (
+        (serverEvent.type === "read.snapshot" ||
+          serverEvent.type === "read.updated") &&
+        serverEvent.conversationId === conversationId
+      ) {
+        onReadReceipt(serverEvent);
+        return;
+      }
+
+      if (
+        serverEvent.type === "read.published" &&
+        serverEvent.conversationId === conversationId
+      ) {
+        sentRead = false;
+        flushPendingMessages();
         return;
       }
 
@@ -341,17 +448,31 @@ export function connectToConversation(
       if (socket === currentSocket) socket = null;
       subscribed = false;
       sentMessageIds.clear();
+      pendingRead = pendingRead || sentRead;
+      sentRead = false;
       if (closed) return;
       onStatus("reconnecting");
       scheduleReconnect();
     });
   };
 
+  const handleVisibilityChange = () => {
+    if (document.visibilityState === "visible") {
+      pendingRead = true;
+      flushPendingMessages();
+    }
+  };
+  document.addEventListener("visibilitychange", handleVisibilityChange);
+
   connect();
 
   return {
     publishMessage(messageId: string) {
       pendingMessageIds.add(messageId);
+      flushPendingMessages();
+    },
+    publishRead() {
+      pendingRead = true;
       flushPendingMessages();
     },
     publishTyping(isTyping: boolean) {
@@ -370,6 +491,7 @@ export function connectToConversation(
     close() {
       closed = true;
       subscribed = false;
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
       if (reconnectTimer !== null) {
         window.clearTimeout(reconnectTimer);
         reconnectTimer = null;
